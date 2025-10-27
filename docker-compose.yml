@@ -1,0 +1,70 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:16-alpine
+    container_name: zistudy_db
+    environment:
+      POSTGRES_USER: zistudy
+      POSTGRES_PASSWORD: zistudy
+      POSTGRES_DB: zistudy
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U zistudy"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+  redis:
+    image: redis:7-alpine
+    container_name: zistudy_redis
+    ports:
+      - "6379:6379"
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zistudy_api
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      ZISTUDY_DATABASE_URL: postgresql+asyncpg://zistudy:zistudy@db:5432/zistudy
+      ZISTUDY_ENVIRONMENT: production
+      ZISTUDY_LOG_LEVEL: INFO
+      ZISTUDY_CELERY_TASK_ALWAYS_EAGER: "0"
+      ZISTUDY_CELERY_BROKER_URL: redis://redis:6379/0
+      ZISTUDY_CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ZISTUDY_PROCESS_TYPE: api
+    ports:
+      - "8000:8000"
+    command: ["python", "main.py"]
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: zistudy_worker
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_started
+    env_file:
+      - .env
+    environment:
+      ZISTUDY_DATABASE_URL: postgresql+asyncpg://zistudy:zistudy@db:5432/zistudy
+      ZISTUDY_ENVIRONMENT: production
+      ZISTUDY_LOG_LEVEL: INFO
+      ZISTUDY_CELERY_TASK_ALWAYS_EAGER: "0"
+      ZISTUDY_CELERY_BROKER_URL: redis://redis:6379/0
+      ZISTUDY_CELERY_RESULT_BACKEND: redis://redis:6379/1
+      ZISTUDY_PROCESS_TYPE: worker
+    command: ["python", "main.py"]
+volumes:
+  postgres_data:
