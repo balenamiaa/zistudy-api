@@ -229,8 +229,7 @@ async def _process_ai_generation_job(job_id: int) -> None:
                     payload=base64.b64decode(item["content"]),
                 )
                 for item in document_payload
-                if isinstance(item, dict)
-                and item.get("content")
+                if isinstance(item, dict) and item.get("content")
             ]
             result = await ai_service.generate_from_pdfs(request_model, documents)
             await job_repo.set_result(job_id, result.model_dump(mode="json"))
@@ -259,6 +258,8 @@ async def _process_ai_generation_job(job_id: int) -> None:
 
 
 __all__ = ["process_clone_job", "process_export_job", "process_ai_generation_job"]
+
+
 async def _mark_job_failed(
     *,
     job_repo: JobRepository,

@@ -86,7 +86,9 @@ def upgrade() -> None:
         sa.Column("search_document", sa.Text()),
     )
 
-    rows = list(bind.execute(sa.select(study_cards.c.id, study_cards.c.card_type, study_cards.c.data)))
+    rows = list(
+        bind.execute(sa.select(study_cards.c.id, study_cards.c.card_type, study_cards.c.data))
+    )
     for row in rows:
         search_document = _build_search_document(card_type=row.card_type, data=row.data)
         bind.execute(

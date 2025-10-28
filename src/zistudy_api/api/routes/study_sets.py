@@ -10,6 +10,7 @@ from zistudy_api.api.dependencies import (
     get_optional_session_user,
     get_study_set_service,
 )
+from zistudy_api.config.settings import get_settings
 from zistudy_api.domain.enums import CardType
 from zistudy_api.domain.schemas.auth import SessionUser
 from zistudy_api.domain.schemas.jobs import JobSummary
@@ -28,7 +29,6 @@ from zistudy_api.domain.schemas.study_sets import (
     StudySetUpdate,
     StudySetWithMeta,
 )
-from zistudy_api.config.settings import get_settings
 from zistudy_api.services.job_processors import process_clone_job, process_export_job
 from zistudy_api.services.study_sets import StudySetService
 
@@ -338,4 +338,6 @@ async def study_sets_for_card(
     user_id = session_user.id if session_user else None
     sets = await service.get_study_sets_for_card(card_id=card_id, user_id=user_id)
     return sets
+
+
 MAX_PAGE_SIZE = get_settings().max_page_size

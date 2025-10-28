@@ -52,6 +52,7 @@ def _run_api(settings: Settings) -> None:
     from fastapi import FastAPI
 
     from zistudy_api.app import app
+
     reload_enabled = settings.environment == "local"
     host = settings.api_host
     port = settings.api_port

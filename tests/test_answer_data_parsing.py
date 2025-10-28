@@ -38,7 +38,9 @@ ANSWER_CASES = [
     ),
     (
         "emq",
-        answer_schemas.EmqAnswerData(matches=[answer_schemas.EmqMatch(premise_index=0, option_index=2)]),
+        answer_schemas.EmqAnswerData(
+            matches=[answer_schemas.EmqMatch(premise_index=0, option_index=2)]
+        ),
         answer_schemas.EmqAnswerData,
     ),
 ]
@@ -64,7 +66,11 @@ def test_answer_payload_normalises_types(
     expected_type: type,
 ) -> None:
     payload = answer_schemas.AnswerPayload.model_validate(
-        {"study_card_id": 1, "answer_type": answer_type, "data": answer_model.model_dump(mode="json")}
+        {
+            "study_card_id": 1,
+            "answer_type": answer_type,
+            "data": answer_model.model_dump(mode="json"),
+        }
     )
     assert isinstance(payload.data, expected_type)
     assert payload.answer_type == answer_type

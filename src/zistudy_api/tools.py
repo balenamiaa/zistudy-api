@@ -54,10 +54,11 @@ def run_typecheck() -> int:
 
 
 def run_test() -> int:
-    """Lint, type-check, and run the test suite."""
+    """Format, lint, type-check, and run the test suite."""
 
     return _run_sequence(
         [
+            [sys.executable, "-m", "ruff", "format", str(PROJECT_ROOT)],
             [sys.executable, "-m", "ruff", "check", str(PROJECT_ROOT)],
             [
                 sys.executable,

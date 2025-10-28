@@ -133,8 +133,7 @@ class GenerativeClient(Protocol):
         response_schema: Mapping[str, JSONValue] | None = None,
         generation_config: GenerationConfig | None = None,
         model: str | None = None,
-    ) -> Mapping[str, JSONValue]:
-        ...
+    ) -> Mapping[str, JSONValue]: ...
 
     async def upload_file(
         self,
@@ -142,11 +141,9 @@ class GenerativeClient(Protocol):
         data: bytes,
         mime_type: str,
         display_name: str | None = None,
-    ) -> str:
-        ...
+    ) -> str: ...
 
-    async def aclose(self) -> None:
-        ...
+    async def aclose(self) -> None: ...
 
 
 class GeminiGenerativeClient:
@@ -199,14 +196,20 @@ class GeminiGenerativeClient:
     ) -> Mapping[str, JSONValue]:
         """Send a structured JSON generation request and return the decoded payload."""
         target_model = model or self._model
-        path_component = target_model if target_model.startswith("models/") else f"models/{target_model}"
+        path_component = (
+            target_model if target_model.startswith("models/") else f"models/{target_model}"
+        )
         url = f"/{path_component}:generateContent"
-        instruction_payload = ensure_json_object({
-            "parts": [{"text": system_instruction}],
-        })
+        instruction_payload = ensure_json_object(
+            {
+                "parts": [{"text": system_instruction}],
+            }
+        )
         contents_payload: list[JSONValue] = []
         for message in messages:
-            part_payloads = [ensure_json_object(dict(self._serialise_part(part))) for part in message.parts]
+            part_payloads = [
+                ensure_json_object(dict(self._serialise_part(part))) for part in message.parts
+            ]
             message_payload = ensure_json_object(
                 {
                     "role": message.role,
@@ -221,7 +224,9 @@ class GeminiGenerativeClient:
         if "responseMimeType" not in config_payload:
             config_payload["responseMimeType"] = "application/json"
         if response_schema:
-            config_payload["responseJsonSchema"] = _resolve_schema(ensure_json_object(response_schema))
+            config_payload["responseJsonSchema"] = _resolve_schema(
+                ensure_json_object(response_schema)
+            )
 
         payload_dict: dict[str, JSONValue] = {
             "system_instruction": instruction_payload,
@@ -414,7 +419,9 @@ def _ensure_json_value(value: JSONValue | object, *, path: str = "root") -> JSON
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
     if isinstance(value, list):
-        return [_ensure_json_value(item, path=f"{path}[{index}]") for index, item in enumerate(value)]
+        return [
+            _ensure_json_value(item, path=f"{path}[{index}]") for index, item in enumerate(value)
+        ]
     if isinstance(value, tuple):
         return [
             _ensure_json_value(item, path=f"{path}[{index}]") for index, item in enumerate(value)
@@ -467,19 +474,13 @@ def _resolve_schema(schema: JSONObject) -> JSONObject:
                 return _resolve(defs_obj[ref_key], trail=trail + (ref_value,))
 
             return {
-                key: _resolve(value, trail=trail)
-                for key, value in obj.items()
-                if key != "$defs"
+                key: _resolve(value, trail=trail) for key, value in obj.items() if key != "$defs"
             }
         if isinstance(obj, list):
             return [_resolve(item, trail=trail) for item in obj]
         return obj
 
-    resolved: JSONObject = {
-        key: _resolve(value)
-        for key, value in schema.items()
-        if key != "$defs"
-    }
+    resolved: JSONObject = {key: _resolve(value) for key, value in schema.items() if key != "$defs"}
     return resolved
 
 
@@ -522,7 +523,10 @@ def _extract_error_body(response: httpx.Response) -> JSONValue | str | None:
         if isinstance(payload, dict):
             return ensure_json_object(payload)
         if isinstance(payload, list):
-            return [_ensure_json_value(item, path=f"[error][{index}]") for index, item in enumerate(payload)]
+            return [
+                _ensure_json_value(item, path=f"[error][{index}]")
+                for index, item in enumerate(payload)
+            ]
         return _ensure_json_value(payload)
     except GeminiClientError:
         return json.dumps(payload)

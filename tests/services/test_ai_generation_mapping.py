@@ -121,7 +121,9 @@ CARD_CASES = [
             question="Name the antidote for organophosphate toxicity.",
             options=[],
             correct_answers=["Pralidoxime"],
-            rationale=AiGeneratedRationale(primary="Reactivates acetylcholinesterase.", alternatives={}),
+            rationale=AiGeneratedRationale(
+                primary="Reactivates acetylcholinesterase.", alternatives={}
+            ),
             connections=[],
             glossary={},
             numerical_ranges=[],
@@ -180,7 +182,9 @@ CARD_CASES = [
             question="Summarise renal pearls.",
             options=[],
             correct_answers=[],
-            rationale=AiGeneratedRationale(primary="## Renal Pearls\n- RBC casts imply GN", alternatives={}),
+            rationale=AiGeneratedRationale(
+                primary="## Renal Pearls\n- RBC casts imply GN", alternatives={}
+            ),
             connections=[],
             glossary={"title": "Renal Pearls"},
             numerical_ranges=[],

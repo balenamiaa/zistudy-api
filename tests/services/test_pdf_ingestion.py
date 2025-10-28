@@ -39,10 +39,14 @@ class _StubClient:
     ) -> dict[str, JSONValue]:
         raise NotImplementedError
 
-    async def upload_file(self, *, data: bytes, mime_type: str, display_name: str | None = None) -> str:
+    async def upload_file(
+        self, *, data: bytes, mime_type: str, display_name: str | None = None
+    ) -> str:
         if self._fail_upload:
             raise GeminiClientError("upload failed")
-        self._uploads.append({"mime_type": mime_type, "display_name": display_name or "uploaded.pdf"})
+        self._uploads.append(
+            {"mime_type": mime_type, "display_name": display_name or "uploaded.pdf"}
+        )
         return self._file_uri
 
     async def aclose(self) -> None:  # pragma: no cover - not used
@@ -51,6 +55,7 @@ class _StubClient:
     @property
     def uploads(self) -> list[dict[str, str]]:
         return self._uploads
+
 
 pytestmark = pytest.mark.asyncio
 
@@ -105,7 +110,9 @@ async def test_native_strategy_embeds_small_pdf_inline() -> None:
 @pytest.mark.asyncio
 async def test_native_strategy_uploads_large_pdf() -> None:
     service = DocumentIngestionService()
-    payload = UploadedPDF(filename="upload.pdf", payload=create_pdf_with_text_and_image("Upload me"))
+    payload = UploadedPDF(
+        filename="upload.pdf", payload=create_pdf_with_text_and_image("Upload me")
+    )
     strategy = NativePDFContextStrategy(service, inline_threshold=1)
     client = _StubClient(file_uri="file://pdf")
 
@@ -121,7 +128,9 @@ async def test_native_strategy_uploads_large_pdf() -> None:
 @pytest.mark.asyncio
 async def test_native_strategy_falls_back_when_upload_fails() -> None:
     service = DocumentIngestionService()
-    payload = UploadedPDF(filename="fallback.pdf", payload=create_pdf_with_text_and_image("Fallback"))
+    payload = UploadedPDF(
+        filename="fallback.pdf", payload=create_pdf_with_text_and_image("Fallback")
+    )
     strategy = NativePDFContextStrategy(service, inline_threshold=1)
 
     context = await strategy.build_context((payload,), client=_StubClient(fail_upload=True))

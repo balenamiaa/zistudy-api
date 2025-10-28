@@ -109,9 +109,7 @@ class StudySetService:
             missing = set(unique_ids) - found_ids
             raise ValueError(f"Unknown card ids: {sorted(missing)}")
         inaccessible = [
-            card.id
-            for card in cards
-            if not self._card_accessible(card.owner_id, requester)
+            card.id for card in cards if not self._card_accessible(card.owner_id, requester)
         ]
         if inaccessible:
             raise PermissionError(f"Forbidden: cards {sorted(inaccessible)}")

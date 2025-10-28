@@ -97,7 +97,9 @@ class MultipleChoiceCardData(QuestionCardData):
         if not self.correct_option_ids:
             raise ValueError("At least one correct option identifier is required.")
         option_ids = {option.id for option in self.options}
-        missing = [identifier for identifier in self.correct_option_ids if identifier not in option_ids]
+        missing = [
+            identifier for identifier in self.correct_option_ids if identifier not in option_ids
+        ]
         if missing:
             raise ValueError(f"Unknown option identifiers referenced: {missing}")
         return self
@@ -206,11 +208,15 @@ def parse_card_data(card_type: CardType | None, raw_data: Any) -> CardData:
         raise TypeError("Study card payload must be a JSON object.")
 
     if card_type is None:
-        return GenericCardData(generator=_coerce_generator(raw_data.get("generator")), payload=raw_data)
+        return GenericCardData(
+            generator=_coerce_generator(raw_data.get("generator")), payload=raw_data
+        )
 
     model = _CARD_TYPE_TO_MODEL.get(card_type)
     if model is None:
-        return GenericCardData(generator=_coerce_generator(raw_data.get("generator")), payload=raw_data)
+        return GenericCardData(
+            generator=_coerce_generator(raw_data.get("generator")), payload=raw_data
+        )
 
     try:
         return cast(CardData, model.model_validate(raw_data))

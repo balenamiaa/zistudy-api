@@ -87,7 +87,9 @@ class StudyCardGenerationAgent:
         temperature = request.temperature or self._config.default_temperature
         model = request.model or self._config.default_model
 
-        schema_json = json.dumps(AiGeneratedStudyCardSet.model_json_schema(), indent=2, sort_keys=True)
+        schema_json = json.dumps(
+            AiGeneratedStudyCardSet.model_json_schema(), indent=2, sort_keys=True
+        )
         context_summaries = [
             f"- Existing question: {question.strip()}"
             for question in (existing_questions or [])
@@ -120,10 +122,10 @@ class StudyCardGenerationAgent:
                 remaining,
                 feedback,
             )
-            schema_instruction = (
-                f"{instructions}\n\nReturn a JSON document that matches the following schema:\n```json\n{schema_json}\n```"
-            )
-            parts: list[GeminiTextPart | GeminiInlineDataPart | GeminiFilePart] = [GeminiTextPart(schema_instruction)]
+            schema_instruction = f"{instructions}\n\nReturn a JSON document that matches the following schema:\n```json\n{schema_json}\n```"
+            parts: list[GeminiTextPart | GeminiInlineDataPart | GeminiFilePart] = [
+                GeminiTextPart(schema_instruction)
+            ]
             parts.extend(self._render_document_parts(documents))
             if context_summaries:
                 parts.append(GeminiTextPart(self._render_existing_cards_section(context_summaries)))

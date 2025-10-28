@@ -42,7 +42,9 @@ class StubClient:
         self.upload_calls: list[tuple[bytes, str, str | None]] = []
         self._default_model = "models/gemini-stub"
 
-    async def upload_file(self, *, data: bytes, mime_type: str, display_name: str | None = None) -> str:
+    async def upload_file(
+        self, *, data: bytes, mime_type: str, display_name: str | None = None
+    ) -> str:
         self.upload_calls.append((data, mime_type, display_name))
         if not self.should_upload:
             raise AssertionError("upload_file should not have been called for inline payloads")
@@ -72,7 +74,9 @@ class StubClient:
 
 
 class FailingUploadClient(StubClient):
-    async def upload_file(self, *, data: bytes, mime_type: str, display_name: str | None = None) -> str:
+    async def upload_file(
+        self, *, data: bytes, mime_type: str, display_name: str | None = None
+    ) -> str:
         raise GeminiClientError("upload failed")
 
 
@@ -226,7 +230,9 @@ async def test_ai_service_respects_retention_preference(session_maker) -> None:
                 ),
             )
         ],
-        retention_aid=AiRetentionAid(markdown="## Antidotes\n- Glucagon reverses beta-blocker effects"),
+        retention_aid=AiRetentionAid(
+            markdown="## Antidotes\n- Glucagon reverses beta-blocker effects"
+        ),
         model_used="models/gemini-2.5-pro",
         temperature_applied=0.2,
         requested_card_count=1,
@@ -291,7 +297,9 @@ async def test_ai_service_native_strategy_includes_pdf_parts(session_maker) -> N
         request = StudyCardGenerationRequest(topics=["Test"], include_retention_aid=False)
         await service.generate_from_pdfs(
             request,
-            files=[UploadedPDF(filename="native.pdf", payload=create_pdf_with_text_and_image("native"))],
+            files=[
+                UploadedPDF(filename="native.pdf", payload=create_pdf_with_text_and_image("native"))
+            ],
         )
 
     assert stub_agent.seen_extra_parts[0], "Expected PDF parts to be forwarded"

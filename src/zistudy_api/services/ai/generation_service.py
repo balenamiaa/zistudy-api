@@ -138,7 +138,11 @@ class AiStudyCardService:
         records = await repository.get_many(card_ids)
         questions: list[str] = []
         for record in records:
-            card_type = CardType(record.card_type) if isinstance(record.card_type, str) else record.card_type
+            card_type = (
+                CardType(record.card_type)
+                if isinstance(record.card_type, str)
+                else record.card_type
+            )
             question = self._extract_question_from_data(card_type, record.data)
             if question:
                 questions.append(question)
@@ -196,7 +200,9 @@ class AiStudyCardService:
             numerical_ranges = payload.numerical_ranges or []
 
             if card.card_type == CardType.MCQ_SINGLE:
-                options = [CardOption(id=option.id, text=option.text) for option in payload.options or []]
+                options = [
+                    CardOption(id=option.id, text=option.text) for option in payload.options or []
+                ]
                 correct_ids = payload.correct_answers or ([options[0].id] if options else [])
                 return McqSingleCardData(
                     generator=generator,
@@ -211,7 +217,9 @@ class AiStudyCardService:
                 )
 
             if card.card_type == CardType.MCQ_MULTI:
-                options = [CardOption(id=option.id, text=option.text) for option in payload.options or []]
+                options = [
+                    CardOption(id=option.id, text=option.text) for option in payload.options or []
+                ]
                 correct_ids = payload.correct_answers or [option.id for option in options[:2]]
                 return McqMultiCardData(
                     generator=generator,

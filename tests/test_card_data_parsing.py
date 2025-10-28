@@ -14,7 +14,9 @@ CARD_CASES = [
         card_schemas.McqSingleCardData(
             generator=GENERATOR,
             prompt="Select the first-line analgesic in pregnancy.",
-            rationale=card_schemas.CardRationale(primary="Acetaminophen is preferred.", alternatives={}),
+            rationale=card_schemas.CardRationale(
+                primary="Acetaminophen is preferred.", alternatives={}
+            ),
             options=[
                 card_schemas.CardOption(id="A", text="Acetaminophen"),
                 card_schemas.CardOption(id="B", text="Ibuprofen"),
@@ -31,7 +33,9 @@ CARD_CASES = [
         card_schemas.McqMultiCardData(
             generator=GENERATOR,
             prompt="Which findings support nephritic syndrome?",
-            rationale=card_schemas.CardRationale(primary="Cast findings support the diagnosis.", alternatives={}),
+            rationale=card_schemas.CardRationale(
+                primary="Cast findings support the diagnosis.", alternatives={}
+            ),
             options=[
                 card_schemas.CardOption(id="A", text="Red blood cell casts"),
                 card_schemas.CardOption(id="B", text="Fatty casts"),
@@ -50,7 +54,9 @@ CARD_CASES = [
         card_schemas.WrittenCardData(
             generator=GENERATOR,
             prompt="What is the antidote for organophosphate poisoning?",
-            rationale=card_schemas.CardRationale(primary="Pralidoxime reactivates acetylcholinesterase.", alternatives={}),
+            rationale=card_schemas.CardRationale(
+                primary="Pralidoxime reactivates acetylcholinesterase.", alternatives={}
+            ),
             expected_answer="Acetylcholinesterase inhibitor",
             glossary={},
             connections=[],
@@ -63,7 +69,9 @@ CARD_CASES = [
         card_schemas.TrueFalseCardData(
             generator=GENERATOR,
             prompt="True or False: Intravenous glucagon reverses beta-blocker toxicity.",
-            rationale=card_schemas.CardRationale(primary="Glucagon bypasses beta receptors.", alternatives={}),
+            rationale=card_schemas.CardRationale(
+                primary="Glucagon bypasses beta receptors.", alternatives={}
+            ),
             correct_answer=True,
             glossary={},
             connections=[],
@@ -76,7 +84,9 @@ CARD_CASES = [
         card_schemas.ClozeCardData(
             generator=GENERATOR,
             prompt="Fill in the blanks for the management of __ and __.",
-            rationale=card_schemas.CardRationale(primary="Key steps in management.", alternatives={}),
+            rationale=card_schemas.CardRationale(
+                primary="Key steps in management.", alternatives={}
+            ),
             cloze_answers=["hypoglycemia", "beta-blocker toxicity"],
             glossary={},
             connections=[],
@@ -90,7 +100,9 @@ CARD_CASES = [
             generator=GENERATOR,
             prompt="Match the stabilising agent to the arrhythmia.",
             instructions="Match the stabilising agent to the arrhythmia.",
-            rationale=card_schemas.CardRationale(primary="Procainamide stabilises wide-complex tachycardia.", alternatives={}),
+            rationale=card_schemas.CardRationale(
+                primary="Procainamide stabilises wide-complex tachycardia.", alternatives={}
+            ),
             options=["Amiodarone", "Dofetilide", "Procainamide"],
             premises=["Wide-complex tachycardia"],
             matches=[card_schemas.EmqMatch(premise_index=0, option_index=2)],
@@ -129,9 +141,7 @@ def test_parse_card_data_returns_generic_when_invalid() -> None:
 def test_parse_card_data_note_without_heading_uses_default_title() -> None:
     raw = card_schemas.NoteCardData(
         generator=None, title="Note", markdown="Clinical pearls\n- Keep hydrated"
-    ).model_dump(
-        mode="json"
-    )
+    ).model_dump(mode="json")
 
     parsed = card_schemas.parse_card_data(CardType.NOTE, raw)
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 import base64
 from typing import Any
 
@@ -164,7 +163,12 @@ class _StubResult:
     payload: dict[str, Any] = {
         "cards": [],
         "retention_aid": None,
-        "summary": {"card_count": 0, "sources": [], "model_used": "stub", "temperature_applied": 0.0},
+        "summary": {
+            "card_count": 0,
+            "sources": [],
+            "model_used": "stub",
+            "temperature_applied": 0.0,
+        },
         "raw_generation": {},
     }
 

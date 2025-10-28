@@ -40,7 +40,9 @@ async def test_auth_service_register_and_login(session_maker) -> None:
         service = await _get_auth_service(session)
 
         user = await service.register_user(
-            UserCreate(email="user@example.com", password=SecretStr("Secret123!"), full_name="U Sing")
+            UserCreate(
+                email="user@example.com", password=SecretStr("Secret123!"), full_name="U Sing"
+            )
         )
         assert user.email == "user@example.com"
 
@@ -61,9 +63,13 @@ async def test_auth_service_api_key_flow(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
         user = await service.register_user(
-            UserCreate(email="keyer@example.com", password=SecretStr("Secret123!"), full_name="Key User")
+            UserCreate(
+                email="keyer@example.com", password=SecretStr("Secret123!"), full_name="Key User"
+            )
         )
-        tokens = await service.authenticate(UserLogin(email=user.email, password=SecretStr("Secret123!")))
+        tokens = await service.authenticate(
+            UserLogin(email=user.email, password=SecretStr("Secret123!"))
+        )
         assert tokens.access_token
 
         api_key = await service.create_api_key(user.id, APIKeyCreate(name="CI", expires_in_hours=1))
@@ -80,11 +86,15 @@ async def test_auth_service_api_key_flow(session_maker) -> None:
 async def test_auth_service_invalid_login(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        user_payload = UserCreate(email="fail@example.com", password=SecretStr("Secret123!"), full_name=None)
+        user_payload = UserCreate(
+            email="fail@example.com", password=SecretStr("Secret123!"), full_name=None
+        )
         await service.register_user(user_payload)
 
         with pytest.raises(HTTPException) as exc:
-            await service.authenticate(UserLogin(email=user_payload.email, password=SecretStr("wrong")))
+            await service.authenticate(
+                UserLogin(email=user_payload.email, password=SecretStr("wrong"))
+            )
         assert exc.value.status_code == 401
 
 
@@ -92,7 +102,9 @@ async def test_auth_service_invalid_login(session_maker) -> None:
 async def test_register_duplicate_email(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        payload = UserCreate(email="duplicate@example.com", password=SecretStr("Secret123!"), full_name=None)
+        payload = UserCreate(
+            email="duplicate@example.com", password=SecretStr("Secret123!"), full_name=None
+        )
         await service.register_user(payload)
         with pytest.raises(HTTPException) as exc:
             await service.register_user(payload)
@@ -103,7 +115,9 @@ async def test_register_duplicate_email(session_maker) -> None:
 async def test_authenticate_disabled_user(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        payload = UserCreate(email="disabled@example.com", password=SecretStr("Secret123!"), full_name=None)
+        payload = UserCreate(
+            email="disabled@example.com", password=SecretStr("Secret123!"), full_name=None
+        )
         user = await service.register_user(payload)
         repo = UserRepository(session)
         entity = await repo.get_by_email(user.email)
@@ -112,7 +126,9 @@ async def test_authenticate_disabled_user(session_maker) -> None:
         await session.commit()
 
         with pytest.raises(HTTPException) as exc:
-            await service.authenticate(UserLogin(email=user.email, password=SecretStr("Secret123!")))
+            await service.authenticate(
+                UserLogin(email=user.email, password=SecretStr("Secret123!"))
+            )
         assert exc.value.status_code == status.HTTP_403_FORBIDDEN
 
 
@@ -120,9 +136,13 @@ async def test_authenticate_disabled_user(session_maker) -> None:
 async def test_refresh_with_expired_token(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        payload = UserCreate(email="refresh@example.com", password=SecretStr("Secret123!"), full_name=None)
+        payload = UserCreate(
+            email="refresh@example.com", password=SecretStr("Secret123!"), full_name=None
+        )
         user = await service.register_user(payload)
-        tokens = await service.authenticate(UserLogin(email=user.email, password=SecretStr("Secret123!")))
+        tokens = await service.authenticate(
+            UserLogin(email=user.email, password=SecretStr("Secret123!"))
+        )
 
         repo = RefreshTokenRepository(session)
         record = await repo.get_by_hash(hash_token(tokens.refresh_token))
@@ -139,9 +159,13 @@ async def test_refresh_with_expired_token(session_maker) -> None:
 async def test_refresh_token_cannot_be_reused(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        payload = UserCreate(email="rotate@example.com", password=SecretStr("Secret123!"), full_name=None)
+        payload = UserCreate(
+            email="rotate@example.com", password=SecretStr("Secret123!"), full_name=None
+        )
         user = await service.register_user(payload)
-        tokens = await service.authenticate(UserLogin(email=user.email, password=SecretStr("Secret123!")))
+        tokens = await service.authenticate(
+            UserLogin(email=user.email, password=SecretStr("Secret123!"))
+        )
 
         new_tokens = await service.refresh(RefreshRequest(refresh_token=tokens.refresh_token))
         assert new_tokens.refresh_token != tokens.refresh_token
@@ -164,9 +188,13 @@ async def test_authenticate_api_key_invalid(session_maker) -> None:
 async def test_parse_access_token_invalid_user(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        payload = UserCreate(email="delete@example.com", password=SecretStr("Secret123!"), full_name=None)
+        payload = UserCreate(
+            email="delete@example.com", password=SecretStr("Secret123!"), full_name=None
+        )
         user = await service.register_user(payload)
-        tokens = await service.authenticate(UserLogin(email=user.email, password=SecretStr("Secret123!")))
+        tokens = await service.authenticate(
+            UserLogin(email=user.email, password=SecretStr("Secret123!"))
+        )
 
         repo = UserRepository(session)
         entity = await repo.get_by_email(user.email)

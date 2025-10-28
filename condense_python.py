@@ -47,7 +47,8 @@ def condense_python_files(root_dir: str, output_file: str):
 
     # Filter out excluded directories and the output file itself
     python_files = [
-        f for f in all_python_files
+        f
+        for f in all_python_files
         if not should_exclude(f) and f.name != os.path.basename(output_file)
     ]
 

@@ -55,7 +55,10 @@ async def test_study_card_service_crud(session_maker) -> None:
                 data=McqSingleCardData(
                     generator=None,
                     prompt="Updated?",
-                    options=[CardOption(id="A", text="ATP synthesis"), CardOption(id="B", text="Protein folding")],
+                    options=[
+                        CardOption(id="A", text="ATP synthesis"),
+                        CardOption(id="B", text="Protein folding"),
+                    ],
                     correct_option_ids=["A"],
                 ),
             ),
@@ -90,34 +93,39 @@ async def test_study_card_service_crud(session_maker) -> None:
 
 
 async def test_study_card_service_import_cards_from_json(session_maker) -> None:
-        async with session_maker() as session:
-            service = StudyCardService(session)
-            owner = SessionUser(
-                id="import-owner",
-                email="owner@example.com",
-                is_superuser=False,
-            )
-            cards = [
-                StudyCardCreate(
-                    card_type=CardType.NOTE,
-                    difficulty=1,
-                    data=NoteCardData(generator=None, title="Hydration", markdown="Remember to hydrate."),
-                ).model_dump(mode="json"),
-                StudyCardCreate(
-                    card_type=CardType.MCQ_SINGLE,
-                    difficulty=3,
-                    data=McqSingleCardData(
-                        generator=None,
-                        prompt="Normal sodium?",
-                        options=[CardOption(id="A", text="135-145 mEq/L"), CardOption(id="B", text="120-130 mEq/L")],
-                        correct_option_ids=["A"],
-                    ),
-                ).model_dump(mode="json"),
-            ]
-            created = await service.import_cards_from_json(json.dumps(cards), owner=owner)
-            assert len(created) == 2
-            assert {card.card_type for card in created} == {CardType.NOTE, CardType.MCQ_SINGLE}
-            assert all(card.owner_id == owner.id for card in created)
+    async with session_maker() as session:
+        service = StudyCardService(session)
+        owner = SessionUser(
+            id="import-owner",
+            email="owner@example.com",
+            is_superuser=False,
+        )
+        cards = [
+            StudyCardCreate(
+                card_type=CardType.NOTE,
+                difficulty=1,
+                data=NoteCardData(
+                    generator=None, title="Hydration", markdown="Remember to hydrate."
+                ),
+            ).model_dump(mode="json"),
+            StudyCardCreate(
+                card_type=CardType.MCQ_SINGLE,
+                difficulty=3,
+                data=McqSingleCardData(
+                    generator=None,
+                    prompt="Normal sodium?",
+                    options=[
+                        CardOption(id="A", text="135-145 mEq/L"),
+                        CardOption(id="B", text="120-130 mEq/L"),
+                    ],
+                    correct_option_ids=["A"],
+                ),
+            ).model_dump(mode="json"),
+        ]
+        created = await service.import_cards_from_json(json.dumps(cards), owner=owner)
+        assert len(created) == 2
+        assert {card.card_type for card in created} == {CardType.NOTE, CardType.MCQ_SINGLE}
+        assert all(card.owner_id == owner.id for card in created)
 
 
 async def test_system_owned_deletion_requires_admin(session_maker) -> None:
@@ -174,7 +182,9 @@ async def test_list_cards_respects_visibility(session_maker) -> None:
         other_list = await service.list_cards(card_type=None, page=1, page_size=10, requester=other)
         assert {card.id for card in other_list.items} == {system_card.id}
 
-        anonymous_list = await service.list_cards(card_type=None, page=1, page_size=10, requester=None)
+        anonymous_list = await service.list_cards(
+            card_type=None, page=1, page_size=10, requester=None
+        )
         assert {card.id for card in anonymous_list.items} == {system_card.id}
 
         owner_not_in_set = await service.list_cards_not_in_set(
@@ -215,7 +225,9 @@ async def test_superuser_listing_and_updates(session_maker, monkeypatch) -> None
             owner=owner,
         )
 
-        super_listing = await service.list_cards(card_type=None, page=1, page_size=10, requester=superuser)
+        super_listing = await service.list_cards(
+            card_type=None, page=1, page_size=10, requester=superuser
+        )
         assert {item.id for item in super_listing.items} == {card.id}
 
         updated = await service.update_card(

@@ -91,50 +91,55 @@ async def test_agent_respects_target_count_and_context() -> None:
                     "card_type": CardType.MCQ_SINGLE.value,
                     "difficulty": 3,
                     "payload": {
-                    "question": "A 62-year-old presents with crushing chest pain. Interpret the ECG findings.",
-                    "options": [
-                        {"id": "A", "text": "Inferior STEMI"},
-                        {"id": "B", "text": "Anterior NSTEMI"},
-                    ],
-                    "correct_answers": ["A"],
-                    "rationale": {
-                        "primary": "ST elevations in II, III, aVF with reciprocal depression indicate an inferior STEMI.",
-                        "alternatives": {"B": "Anterior involvement would elevate V2-V4 instead."},
+                        "question": "A 62-year-old presents with crushing chest pain. Interpret the ECG findings.",
+                        "options": [
+                            {"id": "A", "text": "Inferior STEMI"},
+                            {"id": "B", "text": "Anterior NSTEMI"},
+                        ],
+                        "correct_answers": ["A"],
+                        "rationale": {
+                            "primary": "ST elevations in II, III, aVF with reciprocal depression indicate an inferior STEMI.",
+                            "alternatives": {
+                                "B": "Anterior involvement would elevate V2-V4 instead."
+                            },
+                        },
+                        "connections": [
+                            "Consider right ventricular involvement.",
+                            "Assess for hypotension before nitrates.",
+                        ],
+                        "glossary": {"STEMI": "ST-elevation myocardial infarction."},
+                        "numerical_ranges": ["Troponin I > 0.04 ng/mL"],
+                        "references": ["ACC/AHA STEMI Guideline 2024"],
                     },
-                    "connections": [
-                        "Consider right ventricular involvement.",
-                        "Assess for hypotension before nitrates.",
-                    ],
-                    "glossary": {"STEMI": "ST-elevation myocardial infarction."},
-                    "numerical_ranges": ["Troponin I > 0.04 ng/mL"],
-                    "references": ["ACC/AHA STEMI Guideline 2024"],
                 },
-            },
-            {
-                "card_type": CardType.MCQ_SINGLE.value,
-                "difficulty": 4,
-                "payload": {
-                    "question": "What complication is most likely within the first 24 hours of an inferior MI?",
-                    "options": [
-                        {"id": "A", "text": "Papillary muscle rupture"},
-                        {"id": "B", "text": "Sinus bradycardia"},
-                    ],
-                    "correct_answers": ["B"],
-                    "rationale": {
-                        "primary": "AV nodal ischemia frequently causes bradyarrhythmias early after inferior MI.",
-                        "alternatives": {"A": "Structural rupture occurs days later."},
+                {
+                    "card_type": CardType.MCQ_SINGLE.value,
+                    "difficulty": 4,
+                    "payload": {
+                        "question": "What complication is most likely within the first 24 hours of an inferior MI?",
+                        "options": [
+                            {"id": "A", "text": "Papillary muscle rupture"},
+                            {"id": "B", "text": "Sinus bradycardia"},
+                        ],
+                        "correct_answers": ["B"],
+                        "rationale": {
+                            "primary": "AV nodal ischemia frequently causes bradyarrhythmias early after inferior MI.",
+                            "alternatives": {"A": "Structural rupture occurs days later."},
+                        },
+                        "connections": [
+                            "Monitor with telemetry.",
+                            "Consider atropine if symptomatic.",
+                        ],
+                        "glossary": {"Atropine": "Anticholinergic that increases heart rate."},
+                        "numerical_ranges": ["Heart rate < 60 bpm"],
+                        "references": ["ESC Arrhythmia Guideline 2023"],
                     },
-                    "connections": ["Monitor with telemetry.", "Consider atropine if symptomatic."],
-                    "glossary": {"Atropine": "Anticholinergic that increases heart rate."},
-                    "numerical_ranges": ["Heart rate < 60 bpm"],
-                    "references": ["ESC Arrhythmia Guideline 2023"],
                 },
+            ],
+            "retention_aid": {
+                "markdown": "## Inferior STEMI\n- RCA occlusion common\n- Watch for AV block"
             },
-        ],
-        "retention_aid": {
-            "markdown": "## Inferior STEMI\n- RCA occlusion common\n- Watch for AV block"
         },
-    }
     )
     stub_client = StubGenerativeClient([fake_response])
     agent = StudyCardGenerationAgent(
@@ -189,25 +194,25 @@ async def test_agent_retries_when_response_invalid() -> None:
                     "card_type": CardType.MCQ_SINGLE.value,
                     "difficulty": 2,
                     "payload": {
-                    "question": "Name the pathogen causing Lyme disease.",
-                    "options": [
-                        {"id": "A", "text": "Borrelia burgdorferi"},
-                        {"id": "B", "text": "Borrelia recurrentis"},
-                    ],
-                    "correct_answers": ["A"],
-                    "rationale": {
-                        "primary": "Lyme disease is caused by the spirochete Borrelia burgdorferi transmitted by Ixodes ticks.",
-                        "alternatives": {"B": "Borrelia recurrentis causes relapsing fever."},
+                        "question": "Name the pathogen causing Lyme disease.",
+                        "options": [
+                            {"id": "A", "text": "Borrelia burgdorferi"},
+                            {"id": "B", "text": "Borrelia recurrentis"},
+                        ],
+                        "correct_answers": ["A"],
+                        "rationale": {
+                            "primary": "Lyme disease is caused by the spirochete Borrelia burgdorferi transmitted by Ixodes ticks.",
+                            "alternatives": {"B": "Borrelia recurrentis causes relapsing fever."},
+                        },
+                        "connections": [],
+                        "glossary": {"Spirochete": "A spiral-shaped bacterium."},
+                        "numerical_ranges": [],
+                        "references": [],
                     },
-                    "connections": [],
-                    "glossary": {"Spirochete": "A spiral-shaped bacterium."},
-                    "numerical_ranges": [],
-                    "references": [],
-                },
-            }
-        ],
-        "retention_aid": None,
-    }
+                }
+            ],
+            "retention_aid": None,
+        },
     )
     stub_client = StubGenerativeClient(
         [
@@ -245,27 +250,27 @@ async def test_agent_requests_additional_cards_until_target_met() -> None:
                     "card_type": CardType.MCQ_SINGLE.value,
                     "difficulty": 2,
                     "payload": {
-                    "question": "Which nerve innervates the diaphragm?",
-                    "options": [
-                        {"id": "A", "text": "Phrenic nerve"},
-                        {"id": "B", "text": "Vagus nerve"},
-                    ],
-                    "correct_answers": ["A"],
-                    "rationale": {
-                        "primary": "The phrenic nerve (C3-C5) provides motor supply to the diaphragm.",
-                        "alternatives": {
-                            "B": "Vagus controls parasympathetics but not diaphragmatic contraction."
+                        "question": "Which nerve innervates the diaphragm?",
+                        "options": [
+                            {"id": "A", "text": "Phrenic nerve"},
+                            {"id": "B", "text": "Vagus nerve"},
+                        ],
+                        "correct_answers": ["A"],
+                        "rationale": {
+                            "primary": "The phrenic nerve (C3-C5) provides motor supply to the diaphragm.",
+                            "alternatives": {
+                                "B": "Vagus controls parasympathetics but not diaphragmatic contraction."
+                            },
                         },
+                        "connections": [],
+                        "glossary": {},
+                        "numerical_ranges": [],
+                        "references": [],
                     },
-                    "connections": [],
-                    "glossary": {},
-                    "numerical_ranges": [],
-                    "references": [],
-                },
-            }
-        ],
-        "retention_aid": None,
-    }
+                }
+            ],
+            "retention_aid": None,
+        },
     )
     final_response = cast(
         JSONObject,
@@ -275,27 +280,27 @@ async def test_agent_requests_additional_cards_until_target_met() -> None:
                     "card_type": CardType.MCQ_SINGLE.value,
                     "difficulty": 3,
                     "payload": {
-                    "question": "What is the primary toxin produced by Clostridium botulinum?",
-                    "options": [
-                        {"id": "A", "text": "Botulinum neurotoxin"},
-                        {"id": "B", "text": "Tetanospasmin"},
-                    ],
-                    "correct_answers": ["A"],
-                    "rationale": {
-                        "primary": "Botulinum neurotoxin prevents acetylcholine release, leading to flaccid paralysis.",
-                        "alternatives": {
-                            "B": "Tetanospasmin is produced by C. tetani and causes spastic paralysis."
+                        "question": "What is the primary toxin produced by Clostridium botulinum?",
+                        "options": [
+                            {"id": "A", "text": "Botulinum neurotoxin"},
+                            {"id": "B", "text": "Tetanospasmin"},
+                        ],
+                        "correct_answers": ["A"],
+                        "rationale": {
+                            "primary": "Botulinum neurotoxin prevents acetylcholine release, leading to flaccid paralysis.",
+                            "alternatives": {
+                                "B": "Tetanospasmin is produced by C. tetani and causes spastic paralysis."
+                            },
                         },
+                        "connections": [],
+                        "glossary": {},
+                        "numerical_ranges": [],
+                        "references": [],
                     },
-                    "connections": [],
-                    "glossary": {},
-                    "numerical_ranges": [],
-                    "references": [],
-                },
-            }
-        ],
-        "retention_aid": None,
-    }
+                }
+            ],
+            "retention_aid": None,
+        },
     )
     stub_client = StubGenerativeClient([partial_response, final_response])
     agent = StudyCardGenerationAgent(

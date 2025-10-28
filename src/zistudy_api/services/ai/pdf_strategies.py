@@ -70,7 +70,9 @@ class IngestedPDFContextStrategy(PDFContextStrategy):
 
 
 class NativePDFContextStrategy(PDFContextStrategy):
-    def __init__(self, ingestor: DocumentIngestionService, inline_threshold: int = MAX_INLINE_BYTES) -> None:
+    def __init__(
+        self, ingestor: DocumentIngestionService, inline_threshold: int = MAX_INLINE_BYTES
+    ) -> None:
         self._ingestor = ingestor
         self._inline_threshold = inline_threshold
 

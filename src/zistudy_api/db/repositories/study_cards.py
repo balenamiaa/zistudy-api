@@ -39,7 +39,9 @@ def _strip_hidden_fields(value: Any) -> Any:
     return value
 
 
-def _build_search_document(*, card_type: CardType | str | None, data: CardData | dict[str, Any]) -> str:
+def _build_search_document(
+    *, card_type: CardType | str | None, data: CardData | dict[str, Any]
+) -> str:
     serialized = _serialize_card_data(data)
     sanitized = _strip_hidden_fields(serialized)
     type_value = (

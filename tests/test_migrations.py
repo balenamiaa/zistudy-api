@@ -13,9 +13,7 @@ def _fetch_version_sync(db_file: Path) -> str | None:
 
 def _table_names(db_file: Path) -> list[str]:
     with sqlite3.connect(db_file) as conn:
-        cursor = conn.execute(
-            "SELECT name FROM sqlite_master WHERE type='table' ORDER BY name"
-        )
+        cursor = conn.execute("SELECT name FROM sqlite_master WHERE type='table' ORDER BY name")
         return [row[0] for row in cursor.fetchall()]
 
 
@@ -29,6 +27,7 @@ def test_ensure_schema_created_bootstraps_when_missing(tmp_path, monkeypatch) ->
     monkeypatch.setenv("ZISTUDY_DATABASE_URL", db_url)
 
     from zistudy_api.config.settings import get_settings
+
     get_settings.cache_clear()
 
     from zistudy_api.db.migrations import _ensure_schema_created
@@ -46,6 +45,7 @@ def test_ensure_schema_created_skips_when_version_present(tmp_path, monkeypatch)
     monkeypatch.setenv("ZISTUDY_DATABASE_URL", db_url)
 
     from zistudy_api.config.settings import get_settings
+
     get_settings.cache_clear()
 
     from zistudy_api.db import Base

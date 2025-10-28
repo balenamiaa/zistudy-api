@@ -39,7 +39,9 @@ async def test_generate_json_prefers_json_parts() -> None:
             }
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         message = GeminiMessage(role="user", parts=[GeminiTextPart("Hello")])
         result = await client.generate_json(
@@ -57,14 +59,16 @@ async def test_generate_json_parses_text_payload() -> None:
             {
                 "candidates": [
                     {
-                        "content": {"parts": [{"text": "{\"foo\": \"bar\"}"}]},
+                        "content": {"parts": [{"text": '{"foo": "bar"}'}]},
                         "finishReason": "STOP",
                     }
                 ]
             }
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         message = GeminiMessage(
             role="user",
@@ -95,7 +99,9 @@ async def test_generate_json_raises_on_finish_reason() -> None:
             }
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         message = GeminiMessage(role="user", parts=[GeminiTextPart("Hi")])
         with pytest.raises(GeminiClientError):
@@ -120,7 +126,9 @@ async def test_generate_json_raises_on_non_object_payload() -> None:
             }
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         message = GeminiMessage(role="user", parts=[GeminiTextPart("Hi")])
         with pytest.raises(GeminiClientError):
@@ -146,8 +154,12 @@ async def test_generate_json_accepts_prefixed_models() -> None:
             }
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
-        client = GeminiGenerativeClient(api_key="secret", model="models/prefixed", http_client=async_client)
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
+        client = GeminiGenerativeClient(
+            api_key="secret", model="models/prefixed", http_client=async_client
+        )
         message = GeminiMessage(role="user", parts=[GeminiTextPart("Hello")])
         result = await client.generate_json(
             system_instruction="system prompt",
@@ -196,7 +208,9 @@ async def test_generate_json_resolves_schema_references() -> None:
             }
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         schema = AiGeneratedStudyCardSet.model_json_schema()
         message = GeminiMessage(role="user", parts=[GeminiTextPart("Context")])
@@ -222,7 +236,9 @@ async def test_generate_json_raises_client_error_on_http_failure() -> None:
             json={"error": {"status": "INVALID_ARGUMENT", "message": "schema mismatch"}},
         )
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         message = GeminiMessage(role="user", parts=[GeminiTextPart("Hello")])
         with pytest.raises(GeminiClientError) as exc_info:
@@ -246,7 +262,9 @@ async def test_upload_file_raises_client_error() -> None:
             )
         return httpx.Response(500)
 
-    async with httpx.AsyncClient(transport=httpx.MockTransport(handler), base_url="https://example.com") as async_client:
+    async with httpx.AsyncClient(
+        transport=httpx.MockTransport(handler), base_url="https://example.com"
+    ) as async_client:
         client = GeminiGenerativeClient(api_key="secret", model="test", http_client=async_client)
         with pytest.raises(GeminiClientError):
             await client.upload_file(data=b"pdf-bytes", mime_type="application/pdf")

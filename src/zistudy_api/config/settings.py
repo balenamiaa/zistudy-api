@@ -44,9 +44,7 @@ class Settings(BaseSettings):
     db_max_overflow: int = 20
     default_page_size: int = 20
     max_page_size: int = 100
-    jwt_secret: str = Field(
-        ..., min_length=16, description="Secret key for signing JWTs."
-    )
+    jwt_secret: str = Field(..., min_length=16, description="Secret key for signing JWTs.")
     jwt_algorithm: str = "HS256"
     access_token_exp_minutes: int = 15
     refresh_token_exp_minutes: int = 60 * 24 * 14
@@ -110,16 +108,14 @@ class Settings(BaseSettings):
         default=False,
         description="Run Celery tasks synchronously (useful for tests).",
     )
-    celery_loglevel: Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = (
-        "INFO"
-    )
+    celery_loglevel: Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
 
 
 @lru_cache
 def get_settings() -> Settings:
     """Return cached application settings."""
 
-    return Settings()  # type: ignore[call-arg]
+    return Settings()  # pyright: ignore[reportCallIssue]
 
 
 __all__ = ["Settings", "get_settings"]

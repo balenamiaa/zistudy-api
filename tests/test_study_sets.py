@@ -261,7 +261,9 @@ async def test_study_set_permissions_and_can_access(client: AsyncClient) -> None
     )
     assert update_attempt.status_code == 403
 
-    can_access = await client.get(f"/api/v1/study-sets/{study_set_id}/can-access", headers=other_headers)
+    can_access = await client.get(
+        f"/api/v1/study-sets/{study_set_id}/can-access", headers=other_headers
+    )
     assert can_access.status_code == 200
     flags = can_access.json()
     assert flags == {"can_access": False, "can_modify": False}
@@ -369,11 +371,15 @@ async def test_study_set_add_remove_cards_validation(client: AsyncClient) -> Non
     )
     assert remove_resp.status_code == 204
 
-    for_card_owner = await client.get(f"/api/v1/study-sets/for-card/{card_id}", headers=owner_headers)
+    for_card_owner = await client.get(
+        f"/api/v1/study-sets/for-card/{card_id}", headers=owner_headers
+    )
     assert for_card_owner.status_code == 200
     assert isinstance(for_card_owner.json(), list)
 
-    for_card_other = await client.get(f"/api/v1/study-sets/for-card/{card_id}", headers=other_headers)
+    for_card_other = await client.get(
+        f"/api/v1/study-sets/for-card/{card_id}", headers=other_headers
+    )
     assert for_card_other.status_code == 200
     assert for_card_other.json() == []
 
@@ -459,6 +465,7 @@ async def test_clone_and_export_endpoints(client: AsyncClient, app) -> None:
     study_set_id = create_resp.json()["study_set"]["id"]
 
     now = datetime.now(tz=timezone.utc)
+
     class StubJobService:
         def __init__(self) -> None:
             self.captured_payload: dict | None = None

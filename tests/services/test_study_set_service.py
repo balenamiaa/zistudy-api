@@ -58,7 +58,12 @@ async def test_study_set_service_lifecycle(session_maker) -> None:
         service = StudySetService(session)
         owner_user = SessionUser(id=user_id, email="owner@example.com", is_superuser=False)
         created = await service.create_study_set(
-            StudySetCreate(title="ICU Essentials", description="Basics", is_private=False, tag_names=["icu", "critical"]),
+            StudySetCreate(
+                title="ICU Essentials",
+                description="Basics",
+                is_private=False,
+                tag_names=["icu", "critical"],
+            ),
             user_id,
         )
         assert isinstance(created, StudySetWithMeta)
@@ -119,8 +124,12 @@ async def test_study_set_service_permission_and_bulk_delete(session_maker) -> No
         other_id = await _create_user(session, email="other@example.com")
 
         service = StudySetService(session)
-        first = await service.create_study_set(StudySetCreate(title="First", description=None, is_private=True), owner_id)
-        second = await service.create_study_set(StudySetCreate(title="Second", description=None, is_private=True), other_id)
+        first = await service.create_study_set(
+            StudySetCreate(title="First", description=None, is_private=True), owner_id
+        )
+        second = await service.create_study_set(
+            StudySetCreate(title="Second", description=None, is_private=True), other_id
+        )
 
         result = await service.bulk_delete_study_sets(
             study_set_ids=[first.study_set.id, second.study_set.id],

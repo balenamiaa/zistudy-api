@@ -7,12 +7,12 @@ from fastapi import APIRouter, Depends, File, Form, HTTPException, UploadFile, s
 from pydantic import ValidationError
 
 from zistudy_api.api.dependencies import JobServiceDependency, get_current_session_user
+from zistudy_api.config.settings import get_settings
 from zistudy_api.domain.schemas.ai import StudyCardGenerationRequest
 from zistudy_api.domain.schemas.auth import SessionUser
 from zistudy_api.domain.schemas.jobs import JobSummary
 from zistudy_api.services.job_processors import process_ai_generation_job
 from zistudy_api.services.jobs import ProcessorTask
-from zistudy_api.config.settings import get_settings
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -24,6 +24,7 @@ PDF_CONTENT_TYPES = {
     "text/pdf",
     "text/x-pdf",
 }
+
 
 @router.post(
     "/study-cards/generate",

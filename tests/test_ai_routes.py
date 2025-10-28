@@ -2,8 +2,8 @@ from __future__ import annotations
 
 import pytest
 
-from zistudy_api.config.settings import get_settings
 from tests.utils import create_pdf_with_text_and_image
+from zistudy_api.config.settings import get_settings
 from zistudy_api.domain.schemas.ai import StudyCardGenerationRequest
 from zistudy_api.domain.schemas.jobs import JobStatus
 

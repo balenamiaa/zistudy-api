@@ -161,7 +161,9 @@ class AuthService:
             if expires_at.tzinfo is None:
                 expires_at = expires_at.replace(tzinfo=timezone.utc)
             if expires_at <= datetime.now(tz=timezone.utc):
-                raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired")
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED, detail="API key expired"
+                )
         await self._api_keys.touch_last_used(record.id)
         await self._session.commit()
         user = await self._users.get_by_id(record.user_id)
