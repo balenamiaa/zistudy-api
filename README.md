@@ -1,77 +1,184 @@
 # ZiStudy API
 
-## AI-Assisted Study Card Generation
+ZiStudy is a FastAPI-powered backend for managing study cards, study sets, answers, tags, and background jobs. It is designed for dependable day-to-day use while embracing AI-assisted study card generation as a first-class workflow.
 
-The API now exposes `/api/v1/ai/study-cards/generate` for orchestrating Gemini-powered card creation.
+---
 
-- **Authentication**: Bearer token or API key required (same as existing endpoints).
-- **Request**: `multipart/form-data` with a JSON `payload` (matching `StudyCardGenerationRequest`) and optional `pdfs` uploads.
-- **Output**: Structured JSON containing persisted cards, a Markdown retention aid, and generation metadata.
-- **Incremental generation**: include `existing_card_ids` in the payload to avoid duplicates and request additional cards that build on previously generated items.
+## What the API provides
+
+- **Typed study cards & sets** – CRUD endpoints with ownership and visibility rules.
+- **Learner answers & progress** – record attempts, compute accuracy, and summarise per-set progress.
+- **Background jobs** – queue clone/export tasks (Celery + Redis) and poll `/api/v1/jobs/{id}` for status.
+- **Tag catalogue** – create, search, and attach tags to study sets.
+- **AI generation** – submit PDFs + JSON payloads to offload card authoring to Gemini while automatically curating structured cards.
+
+---
+
+## Quick start
+
+1. **Install prerequisites**
+   - Python 3.12+ and [uv](https://docs.astral.sh/uv/) (recommended)
+   - Redis (for background jobs) and PostgreSQL or any SQLAlchemy-compatible database
+
+2. **Clone + install**
+   ```bash
+   git clone https://github.com/<you>/zistudy-api.git
+   cd zistudy-api
+   uv sync
+   ```
+
+3. **Create an environment file**
+   ```bash
+   cp .env.example .env
+
+   # Minimal local overrides
+   echo 'ZISTUDY_DATABASE_URL=sqlite+aiosqlite:///./dev.db' >> .env
+   echo 'ZISTUDY_JWT_SECRET=replace-with-a-strong-secret' >> .env
+   ```
+
+4. **Start PostgreSQL & Redis (examples)**
+   ```bash
+   docker compose up db redis -d
+   ```
+   or install them locally and point the connection strings at your instances.
+
+5. **Run database migrations**
+   ```bash
+   uv run alembic upgrade head
+   ```
+
+6. **Start the API**
+   ```bash
+   uv run main.py
+   ```
+   The server runs on `http://127.0.0.1:8000`. To run the worker alongside the API in the same process, set `ZISTUDY_PROCESS_TYPE=api-with-worker`. Otherwise keep the default (`api`) and start a dedicated Celery worker:
+   ```bash
+   uv run celery -A zistudy_api.celery_app:celery_app worker --loglevel=INFO
+   ```
+
+---
+
+## Configuration reference
+
+All settings are read from environment variables (prefixed with `ZISTUDY_`). Values in `.env` / `.env.local` are loaded automatically.
+
+| Variable | Purpose | Default |
+| --- | --- | --- |
+| `DATABASE_URL` | SQLAlchemy connection string | *required* |
+| `JWT_SECRET` | Secret used to sign access tokens | *required* |
+| `ENVIRONMENT` | `local`, `test`, or `production` (affects CORS) | `local` |
+| `CORS_ORIGINS` | JSON array of allowed origins | `["http://localhost", "http://localhost:3000", …]` |
+| `AI_PDF_MAX_BYTES` | Max PDF size accepted by AI endpoint (bytes) | `150 * 1024 * 1024` |
+| `CELERY_BROKER_URL` | Celery broker | `redis://localhost:6379/0` |
+| `CELERY_RESULT_BACKEND` | Celery result backend | `redis://localhost:6379/1` |
+| `PROCESS_TYPE` | `api`, `worker`, or `api-with-worker` | `api` |
+| `GEMINI_API_KEY` | Required for AI card generation | `None` |
+| `GEMINI_MODEL` | Gemini model identifier | `gemini-2.5-pro` |
+| `GEMINI_PDF_MODE` | `native` or `ingest` | `native` |
+
+> **Production**
+>
+> Setting `ENVIRONMENT=production` enforces a non-wildcard CORS list. Add approved origins via `CORS_ORIGINS='["https://app.example.com"]'`.
+
+---
+
+## Running tests & tooling
 
 ```bash
-curl -X POST "https://localhost:8000/api/v1/ai/study-cards/generate" \
-  -H "Authorization: Bearer <token>" \
-  -F 'payload={"topics":["Sepsis"],"target_card_count":3};type=application/json' \
-  -F 'pdfs=@/path/to/notes.pdf;type=application/pdf'
+uv run coverage run -m pytest      # tests with coverage
+uv run coverage report             # text summary
+uv run coverage xml                # generate coverage.xml
+uv run ruff check                  # linting
+uv run ruff format                 # formatting
+uv run mypy src tests              # static type checks
 ```
 
-Configure the Gemini client via environment variables (prefixed with `ZISTUDY_`):
+For convenience you can also run `uv run zistudy-test`, which executes the project’s default test script.
 
-| Variable | Description |
-| --- | --- |
-| `ZISTUDY_GEMINI_API_KEY` | Required API key for Gemini access |
-| `ZISTUDY_GEMINI_MODEL` | Model identifier (default `models/gemini-2.5-pro`) |
-| `ZISTUDY_AI_GENERATION_DEFAULT_TEMPERATURE` | Temperature override |
-| `ZISTUDY_AI_GENERATION_MAX_ATTEMPTS` | Max retries when the model fails to produce valid JSON or enough cards |
+---
 
-Run the test suite with:
+## API highlights
 
-```bash
-uv run zistudy-test
+- **Authentication**
+  - Username/password (JWT access + refresh tokens)
+  - API keys (single reveal, hashed at rest)
+  - Both mechanisms use the same `Authorization: Bearer` header
+
+- **Study cards**
+  - `POST /api/v1/study-cards` creates a card owned by the caller
+  - `GET /api/v1/study-cards?card_type=mcq_single&page=1&page_size=20`
+    honours privacy: system cards are public; user cards are private
+  - `POST /api/v1/study-cards/search` filters + paginates typed results
+
+- **Study sets**
+  - Ownership determines whether a user can modify, delete, or add cards
+  - `GET /api/v1/study-sets/{id}/can-access` returns `{can_access, can_modify}`
+  - `POST /api/v1/study-sets/bulk-add` and `/bulk-delete` provide batch operations with per-item error detail
+
+- **Answers**
+  - Users can submit multiple attempts per card; history, stats, and per-set progress endpoints summarise usage
+
+- **Tags**
+  - `POST /api/v1/tags` authenticated creation
+  - `GET /api/v1/tags/search?query=cardio` for quick lookup
+
+- **Jobs**
+  - Clone/export study sets using `POST /api/v1/study-sets/clone` or `/export`
+  - Poll job status at `GET /api/v1/jobs/{job_id}`
+
+---
+
+## AI-assisted card generation
+
+This is the primary path for authoring fresh study material. Clients generate new study cards via:
+
+```
+POST /api/v1/ai/study-cards/generate
 ```
 
-Launch the server (local or production) with:
+with `multipart/form-data` containing:
 
-```bash
-uv run main.py
-```
+- `payload`: JSON matching `StudyCardGenerationRequest`
+- `pdfs`: up to the configured size limit (`ai_pdf_max_bytes`)
 
-- `main.py` applies migrations automatically; run the Celery worker in a separate process with `ZISTUDY_PROCESS_TYPE=worker uv run main.py` (or `uv run celery -A zistudy_api.celery_app:celery_app worker --loglevel=INFO`). For quick local hacking you can run both via `ZISTUDY_PROCESS_TYPE=api-with-worker uv run main.py`.
-- Docker Compose now includes PostgreSQL, Redis, the API process, and a Celery worker—`docker compose up` will run migrations and start everything for you. Core service URLs (Postgres/Redis) are defined directly in `docker-compose.yml`; additional overrides (for secrets, etc.) can live in `.env`. Containers run with `ZISTUDY_ENVIRONMENT=production` to mirror deployment defaults, while host-based dev can keep `local`.
+The server enqueues a job that:
+1. Pipes the request through Gemini with the supplied context
+2. Persists clean, typed study cards (plus an optional retention note)
+3. Returns job status and results via `/api/v1/jobs/{id}`
 
-### Configuration
-
-Provide configuration via environment variables (they are automatically read from `.env` / `.env.local` if present). A typical local setup for running outside Docker:
-
-```bash
-cp .env.example .env  # once per machine
-export ZISTUDY_DATABASE_URL="sqlite+aiosqlite:///./dev.db"
-export ZISTUDY_JWT_SECRET="replace-with-a-strong-secret"
-export ZISTUDY_CELERY_BROKER_URL="redis://localhost:6379/0"
-export ZISTUDY_CELERY_RESULT_BACKEND="redis://localhost:6379/1"
-export ZISTUDY_ENVIRONMENT="local"
-# Optional: switch between inline PDF ingestion (`ingest`) and native Gemini PDF understanding (`native`).
-export ZISTUDY_GEMINI_PDF_MODE="native"
-```
-
-When using Docker Compose these variables are already seeded by the compose file (with optional overrides from `.env`); for other environments ensure they are set before invoking `main.py`.
-
-### Manual AI Smoke Test
-
-To exercise the full Gemini-powered study card pipeline end-to-end, use the helper script (it calls the live API and consumes tokens, so keep it out of CI):
+To quickly smoke-test the pipeline end-to-end:
 
 ```bash
 uv run python scripts/ai_manual_check.py \
   --topics "Sepsis management" \
-  --learning-objectives "Stabilise the patient" "Escalate vasopressors" \
-  --card-count 2
+  --card-count 2 \
+  --learning-objectives "Stabilise the patient" "Titrate vasopressors"
 ```
 
-Requirements:
+> Provide `ZISTUDY_GEMINI_API_KEY` and keep the API running locally. The script consumes tokens and should only be used for manual validation.
 
-- `ZISTUDY_GEMINI_API_KEY` must be defined (see `.env`).
-- The API must be running locally (`uv run main.py` automatically loads `.env`), and Postgres/Redis available (`docker compose up db redis -d` works well).
-- The script registers its own throwaway user, triggers `/api/v1/ai/study-cards/generate`, polls `/api/v1/jobs/{id}`, and prints a summary plus sample persisted cards.
+---
 
-Use the script to validate real LLM round-trips. For automated tests, continue mocking Gemini responses to keep the suite fast and deterministic.
+## Docker Compose option
+
+The repository ships with a Compose stack that provisions PostgreSQL, Redis, the API, and a worker:
+
+```bash
+docker compose up --build
+```
+
+Compose injects sensible defaults for production-like settings; override values in `.env` as needed. The API becomes available on port `8000`.
+
+---
+
+## Contributing
+
+1. Fork and create a feature branch.
+2. Keep coverage above 90% (`uv run coverage report`).
+3. Submit a PR describing the change and relevant tests.
+
+Issues and pull requests are welcome—especially around performance, security, and developer ergonomics.
+
+---
+
+Happy learning! If you run into trouble or have ideas, open an issue or start a discussion.♪
