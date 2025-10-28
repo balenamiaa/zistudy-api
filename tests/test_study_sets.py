@@ -39,12 +39,34 @@ async def test_bulk_add_and_delete_study_sets(client: AsyncClient) -> None:
             "cards": [
                 {
                     "card_type": "mcq_single",
-                    "data": {"question": "2+2?", "options": [3, 4], "answer": 1},
+                    "data": {
+                        "prompt": "2 + 2?",
+                        "options": [
+                            {"id": "A", "text": "3"},
+                            {"id": "B", "text": "4"},
+                        ],
+                        "correct_option_ids": ["B"],
+                        "glossary": {},
+                        "connections": [],
+                        "references": [],
+                        "numerical_ranges": [],
+                    },
                     "difficulty": 1,
                 },
                 {
                     "card_type": "mcq_single",
-                    "data": {"question": "3+5?", "options": [7, 8], "answer": 1},
+                    "data": {
+                        "prompt": "3 + 5?",
+                        "options": [
+                            {"id": "A", "text": "7"},
+                            {"id": "B", "text": "8"},
+                        ],
+                        "correct_option_ids": ["B"],
+                        "glossary": {},
+                        "connections": [],
+                        "references": [],
+                        "numerical_ranges": [],
+                    },
                     "difficulty": 1,
                 },
             ]
@@ -143,9 +165,16 @@ async def test_clone_and_export_jobs(client: AsyncClient) -> None:
                 {
                     "card_type": "mcq_single",
                     "data": {
-                        "question": "Capital of France?",
-                        "options": ["Paris", "Berlin"],
-                        "answer": 0,
+                        "prompt": "Capital of France?",
+                        "options": [
+                            {"id": "A", "text": "Paris"},
+                            {"id": "B", "text": "Berlin"},
+                        ],
+                        "correct_option_ids": ["A"],
+                        "glossary": {},
+                        "connections": [],
+                        "references": [],
+                        "numerical_ranges": [],
                     },
                     "difficulty": 1,
                 }
@@ -269,6 +298,10 @@ async def test_study_set_add_remove_cards_validation(client: AsyncClient) -> Non
                 "prompt": "Hematology?",
                 "options": [{"id": "A", "text": "RBC"}],
                 "correct_option_ids": ["A"],
+                "glossary": {},
+                "connections": [],
+                "references": [],
+                "numerical_ranges": [],
             },
             "difficulty": 2,
         },

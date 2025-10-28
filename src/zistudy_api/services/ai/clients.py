@@ -1,3 +1,5 @@
+"""Gemini client abstractions used by the study card generation pipeline."""
+
 from __future__ import annotations
 
 import json
@@ -30,23 +32,31 @@ class GeminiClientError(RuntimeError):
 
 @dataclass(frozen=True, slots=True)
 class GeminiMessage:
+    """Single Gemini message consisting of role-tagged parts."""
+
     role: str
     parts: Sequence["GeminiContentPart"]
 
 
 @dataclass(frozen=True, slots=True)
 class GeminiTextPart:
+    """Plain text content part."""
+
     text: str
 
 
 @dataclass(frozen=True, slots=True)
 class GeminiInlineDataPart:
+    """Inline base64 encoded payload part."""
+
     mime_type: str
     data: str
 
 
 @dataclass(frozen=True, slots=True)
 class GeminiFilePart:
+    """Reference to a Gemini uploaded file."""
+
     mime_type: str
     file_uri: str
 
@@ -87,6 +97,7 @@ class GenerationConfig:
         self._additional_parameters = dict(additional_parameters or {})
 
     def as_payload(self) -> JSONObject:
+        """Render the config as the JSON payload expected by Gemini."""
         payload: JSONObject = {}
         if self._temperature is not None:
             payload["temperature"] = self._temperature
@@ -106,6 +117,8 @@ class GenerationConfig:
 
 
 class GenerativeClient(Protocol):
+    """Protocol representing the subset of Gemini client behaviour we rely on."""
+
     @property
     def default_model(self) -> str: ...
 
@@ -184,6 +197,7 @@ class GeminiGenerativeClient:
         generation_config: GenerationConfig | None = None,
         model: str | None = None,
     ) -> Mapping[str, JSONValue]:
+        """Send a structured JSON generation request and return the decoded payload."""
         target_model = model or self._model
         path_component = target_model if target_model.startswith("models/") else f"models/{target_model}"
         url = f"/{path_component}:generateContent"
@@ -276,6 +290,7 @@ class GeminiGenerativeClient:
         mime_type: str,
         display_name: str | None = None,
     ) -> str:
+        """Upload binary data to Gemini's file API and return the resulting URI."""
         start_headers = {
             "x-goog-api-key": self._api_key,
             "X-Goog-Upload-Protocol": "resumable",
@@ -346,6 +361,7 @@ class GeminiGenerativeClient:
         return cast(str, file_info["uri"])
 
     def _parse_text_json(self, payload: str) -> Mapping[str, JSONValue]:
+        """Parse a JSON object embedded inside a Gemini text part."""
         try:
             parsed = json.loads(payload)
         except json.JSONDecodeError as exc:  # pragma: no cover - defensive guard
@@ -356,6 +372,7 @@ class GeminiGenerativeClient:
 
     @staticmethod
     def _serialise_part(part: GeminiContentPart) -> Mapping[str, JSONValue]:
+        """Convert strongly typed part structures into Gemini payload dictionaries."""
         if isinstance(part, GeminiTextPart):
             return {"text": part.text}
         if isinstance(part, GeminiInlineDataPart):
@@ -393,6 +410,7 @@ __all__ = [
 
 
 def _ensure_json_value(value: JSONValue | object, *, path: str = "root") -> JSONValue:
+    """Validate nested JSON content and raise descriptive errors when invalid."""
     if isinstance(value, (str, int, float, bool)) or value is None:
         return value
     if isinstance(value, list):
@@ -411,6 +429,7 @@ def ensure_json_object(
     *,
     path: str = "root",
 ) -> JSONObject:
+    """Coerce mappings into JSON dictionaries while validating keys and values."""
     result: JSONObject = {}
     for key, value in payload.items():
         if not isinstance(key, str):
@@ -465,6 +484,7 @@ def _resolve_schema(schema: JSONObject) -> JSONObject:
 
 
 def _summarize_response_error(response: httpx.Response) -> str:
+    """Provide a concise textual summary for logging Gemini HTTP errors."""
     try:
         payload = response.json()
     except ValueError:
@@ -491,6 +511,7 @@ def _summarize_response_error(response: httpx.Response) -> str:
 
 
 def _extract_error_body(response: httpx.Response) -> JSONValue | str | None:
+    """Return a JSON-serialisable body for failed Gemini responses."""
     try:
         payload = response.json()
     except ValueError:

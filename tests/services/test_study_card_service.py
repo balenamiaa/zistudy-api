@@ -9,8 +9,8 @@ from zistudy_api.domain.schemas.study_cards import (
     CardOption,
     CardSearchFilters,
     CardSearchRequest,
-    GenericCardData,
     McqSingleCardData,
+    NoteCardData,
     StudyCardCreate,
     StudyCardUpdate,
 )
@@ -25,16 +25,20 @@ async def test_study_card_service_crud(session_maker) -> None:
         payload = StudyCardCreate(
             card_type=CardType.MCQ_SINGLE,
             difficulty=2,
-            data={
-                "prompt": "What is the powerhouse of the cell?",
-                "options": ["Nucleus", "Mitochondria", "Golgi apparatus"],
-                "answer": 1,
-            },
+            data=McqSingleCardData(
+                prompt="What is the powerhouse of the cell?",
+                options=[
+                    CardOption(id="A", text="Nucleus"),
+                    CardOption(id="B", text="Mitochondria"),
+                    CardOption(id="C", text="Golgi apparatus"),
+                ],
+                correct_option_ids=["B"],
+            ),
         )
         created = await service.create_card(payload)
         fetched = await service.get_card(created.id)
-        assert isinstance(fetched.data, GenericCardData)
-        assert fetched.data.payload and fetched.data.payload["answer"] == 1
+        assert isinstance(fetched.data, McqSingleCardData)
+        assert fetched.data.correct_option_ids == ["B"]
 
         updated = await service.update_card(
             created.id,
@@ -59,6 +63,8 @@ async def test_study_card_service_crud(session_maker) -> None:
             CardSearchRequest(
                 query="Updated",
                 filters=CardSearchFilters(card_types=[CardType.MCQ_SINGLE]),
+                page=1,
+                page_size=10,
             )
         )
         assert search.total == 1
@@ -69,20 +75,25 @@ async def test_study_card_service_crud(session_maker) -> None:
 
 
 async def test_study_card_service_import_cards_from_json(session_maker) -> None:
-    async with session_maker() as session:
-        service = StudyCardService(session)
-        cards = [
-            {
-                "card_type": CardType.NOTE.value,
-                "difficulty": 1,
-                "data": {"content": "Remember to hydrate."},
-            },
-            {
-                "card_type": CardType.MCQ_SINGLE.value,
-                "difficulty": 3,
-                "data": {"prompt": "Normal sodium?", "answer": "135-145 mEq/L"},
-            },
-        ]
-        created = await service.import_cards_from_json(json.dumps(cards))
-        assert len(created) == 2
-        assert {card.card_type for card in created} == {CardType.NOTE, CardType.MCQ_SINGLE}
+        async with session_maker() as session:
+            service = StudyCardService(session)
+            cards = [
+                StudyCardCreate(
+                    card_type=CardType.NOTE,
+                    difficulty=1,
+                    data=NoteCardData(generator=None, title="Hydration", markdown="Remember to hydrate."),
+                ).model_dump(mode="json"),
+                StudyCardCreate(
+                    card_type=CardType.MCQ_SINGLE,
+                    difficulty=3,
+                    data=McqSingleCardData(
+                        generator=None,
+                        prompt="Normal sodium?",
+                        options=[CardOption(id="A", text="135-145 mEq/L"), CardOption(id="B", text="120-130 mEq/L")],
+                        correct_option_ids=["A"],
+                    ),
+                ).model_dump(mode="json"),
+            ]
+            created = await service.import_cards_from_json(json.dumps(cards))
+            assert len(created) == 2
+            assert {card.card_type for card in created} == {CardType.NOTE, CardType.MCQ_SINGLE}

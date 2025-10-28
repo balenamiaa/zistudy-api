@@ -1,3 +1,5 @@
+"""High level orchestration for Gemini driven study card generation."""
+
 from __future__ import annotations
 
 import json
@@ -30,6 +32,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True, slots=True)
 class AgentConfiguration:
+    """Static defaults and safety bounds applied to each agent invocation."""
+
     default_model: str
     default_temperature: float
     default_card_count: int
@@ -39,6 +43,8 @@ class AgentConfiguration:
 
 @dataclass(frozen=True, slots=True)
 class AgentResult:
+    """Outcome of a generation run, including any retention content."""
+
     cards: list[AiGeneratedCard]
     retention_aid: AiRetentionAid | None
     model_used: str
@@ -240,6 +246,7 @@ class StudyCardGenerationAgent:
         remaining_count: int,
         feedback: str | None,
     ) -> str:
+        """Assemble the instruction header for the next Gemini attempt."""
         lines: list[str] = []
         lines.append(f"Generate {remaining_count} additional exam-ready study cards.")
         lines.append(f"Difficulty profile: {request.difficulty_profile}.")
@@ -273,6 +280,7 @@ class StudyCardGenerationAgent:
         self,
         documents: Sequence[PDFIngestionResult],
     ) -> Iterable[GeminiTextPart | GeminiInlineDataPart]:
+        """Render PDF segments and images into Gemini message parts."""
         for document in documents:
             if document.text_segments:
                 text_buffer = [
@@ -307,10 +315,12 @@ class StudyCardGenerationAgent:
 
     @staticmethod
     def _format_card_summary(card: AiGeneratedCard, question: str) -> str:
+        """Return a summary used to avoid duplicates in later attempts."""
         return f"- {card.card_type.value} | difficulty {card.difficulty} | {question.strip()}"
 
     @staticmethod
     def _extract_question(card: AiGeneratedCard) -> str | None:
+        """Extract the canonical question stem when available."""
         question = card.payload.question
         if isinstance(question, str) and question.strip():
             return question.strip()

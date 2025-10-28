@@ -114,7 +114,7 @@ class StudyCardService:
         return [StudyCardRead.model_validate(entity) for entity in entities]
 
     async def import_cards_from_json(self, json_data: str) -> list[StudyCardRead]:
-        """Parse legacy JSON payloads into typed cards and persist them."""
+        """Deserialize ``StudyCardCreate`` records from JSON and persist them."""
         adapter = TypeAdapter(list[StudyCardCreate])
         try:
             cards = adapter.validate_json(json_data)

@@ -12,7 +12,7 @@ from zistudy_api.db.repositories.users import UserRepository
 from zistudy_api.domain.enums import CardType
 from zistudy_api.domain.schemas.ai import StudyCardGenerationRequest
 from zistudy_api.domain.schemas.jobs import JobStatus
-from zistudy_api.domain.schemas.study_cards import StudyCardCreate
+from zistudy_api.domain.schemas.study_cards import CardOption, McqSingleCardData, StudyCardCreate
 from zistudy_api.domain.schemas.study_sets import AddCardsToSet, StudySetCreate
 from zistudy_api.services import job_processors
 from zistudy_api.services.study_sets import StudySetService
@@ -37,7 +37,14 @@ async def _seed_study_set(session, owner_id: str) -> tuple[int, int]:
         StudyCardCreate(
             card_type=CardType.MCQ_SINGLE,
             difficulty=2,
-            data={"prompt": "What is 2+2?", "options": [3, 4], "answer": 1},
+            data=McqSingleCardData(
+                prompt="What is 2+2?",
+                options=[
+                    CardOption(id="A", text="3"),
+                    CardOption(id="B", text="4"),
+                ],
+                correct_option_ids=["B"],
+            ),
         )
     )
 

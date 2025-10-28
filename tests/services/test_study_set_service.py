@@ -4,7 +4,7 @@ import pytest
 
 from zistudy_api.db.repositories.users import UserRepository
 from zistudy_api.domain.enums import CardType
-from zistudy_api.domain.schemas.study_cards import StudyCardCreate
+from zistudy_api.domain.schemas.study_cards import CardOption, McqSingleCardData, StudyCardCreate
 from zistudy_api.domain.schemas.study_sets import (
     AddCardsToSet,
     BulkAddToSets,
@@ -30,7 +30,14 @@ async def _create_card(session, prompt: str) -> int:
         StudyCardCreate(
             card_type=CardType.MCQ_SINGLE,
             difficulty=2,
-            data={"prompt": prompt, "answer": 0},
+            data=McqSingleCardData(
+                prompt=prompt,
+                options=[
+                    CardOption(id="A", text="Option 1"),
+                    CardOption(id="B", text="Option 2"),
+                ],
+                correct_option_ids=["A"],
+            ),
         )
     )
     return card.id

@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 from fastapi import HTTPException
+from pydantic import SecretStr
 
 from zistudy_api.config.settings import Settings
 from zistudy_api.db.repositories.api_keys import ApiKeyRepository
@@ -31,11 +32,13 @@ async def test_auth_service_register_and_login(session_maker) -> None:
         service = await _get_auth_service(session)
 
         user = await service.register_user(
-            UserCreate(email="user@example.com", password="Secret123!", full_name="U Sing")
+            UserCreate(email="user@example.com", password=SecretStr("Secret123!"), full_name="U Sing")
         )
         assert user.email == "user@example.com"
 
-        tokens = await service.authenticate(UserLogin(email="user@example.com", password="Secret123!"))
+        tokens = await service.authenticate(
+            UserLogin(email="user@example.com", password=SecretStr("Secret123!"))
+        )
         assert tokens.access_token
         assert tokens.refresh_token
 
@@ -50,9 +53,9 @@ async def test_auth_service_api_key_flow(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
         user = await service.register_user(
-            UserCreate(email="keyer@example.com", password="Secret123!", full_name="Key User")
+            UserCreate(email="keyer@example.com", password=SecretStr("Secret123!"), full_name="Key User")
         )
-        tokens = await service.authenticate(UserLogin(email=user.email, password="Secret123!"))
+        tokens = await service.authenticate(UserLogin(email=user.email, password=SecretStr("Secret123!")))
         assert tokens.access_token
 
         api_key = await service.create_api_key(user.id, APIKeyCreate(name="CI", expires_in_hours=1))
@@ -69,9 +72,9 @@ async def test_auth_service_api_key_flow(session_maker) -> None:
 async def test_auth_service_invalid_login(session_maker) -> None:
     async with session_maker() as session:
         service = await _get_auth_service(session)
-        user_payload = UserCreate(email="fail@example.com", password="Secret123!", full_name=None)
+        user_payload = UserCreate(email="fail@example.com", password=SecretStr("Secret123!"), full_name=None)
         await service.register_user(user_payload)
 
         with pytest.raises(HTTPException) as exc:
-            await service.authenticate(UserLogin(email=user_payload.email, password="wrong"))
+            await service.authenticate(UserLogin(email=user_payload.email, password=SecretStr("wrong")))
         assert exc.value.status_code == 401

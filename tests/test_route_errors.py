@@ -30,7 +30,7 @@ async def test_answer_routes_404(client: AsyncClient) -> None:
     payload = {
         "study_card_id": 9999,
         "answer_type": "mcq_single",
-        "data": {"answer": 0},
+        "data": {"selected_option_id": "A"},
     }
     submit = await client.post("/api/v1/answers", json=payload, headers=headers)
     assert submit.status_code == 404
@@ -48,7 +48,17 @@ async def test_study_card_routes_error_paths(client: AsyncClient) -> None:
 
     resp = await client.put(
         "/api/v1/study-cards/99999",
-        json={"data": {"question": "?", "answer": 1}},
+        json={
+            "data": {
+                "prompt": "Stub question",
+                "options": [{"id": "A", "text": "Option"}],
+                "correct_option_ids": ["A"],
+                "glossary": {},
+                "connections": [],
+                "references": [],
+                "numerical_ranges": [],
+            }
+        },
         headers=headers,
     )
     assert resp.status_code == 404

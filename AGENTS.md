@@ -10,3 +10,5 @@ When writing Web Apis, you will adhere to standards such as OpenAPI and RESTful 
 When working with databases, you will use appropriate indexing strategies, normalization techniques, and query optimization methods to ensure efficient data retrieval and storage. You will also implement robust error handling and logging mechanisms to monitor database performance and troubleshoot issues.
 
 Use Python 3.14 for local tooling and execute the test suite via `uv run zistudy-test`.
+
+Document AI services and schema modules thoroughly with descriptive docstrings, keep study card and answer payloads strongly typed, and extend the regression suite whenever new card formats or agent behaviours are introduced. When adding tests or fixtures, assume typed JSON (no legacy payload smoothing) across HTTP APIs, import flows, and AI integrations.

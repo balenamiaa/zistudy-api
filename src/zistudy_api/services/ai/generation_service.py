@@ -1,3 +1,5 @@
+"""Service layer that glues PDF ingestion, Gemini agents, and persistence."""
+
 from __future__ import annotations
 
 import logging
@@ -129,6 +131,7 @@ class AiStudyCardService:
         )
 
     async def _load_existing_questions(self, card_ids: Sequence[int]) -> list[str]:
+        """Fetch question stems used to prevent duplicates."""
         if not card_ids:
             return []
         repository = StudyCardRepository(self._session)
@@ -149,6 +152,7 @@ class AiStudyCardService:
         documents: Sequence[PDFIngestionResult],
         meta: AgentResult,
     ) -> list[StudyCardRead]:
+        """Persist AI generated cards and optional retention notes."""
         card_payloads = []
         generator_meta = self._card_generator_metadata(request, documents, meta)
         for card in generated_cards:
@@ -186,21 +190,22 @@ class AiStudyCardService:
         payload = card.payload
         try:
             rationale = CardRationale.model_validate(payload.rationale.model_dump(mode="json"))
-            base_kwargs = {
-                "generator": generator,
-                "prompt": payload.question,
-                "rationale": rationale,
-                "glossary": payload.glossary,
-                "connections": payload.connections,
-                "references": payload.references,
-                "numerical_ranges": payload.numerical_ranges,
-            }
+            glossary = payload.glossary or {}
+            connections = payload.connections or []
+            references = payload.references or []
+            numerical_ranges = payload.numerical_ranges or []
 
             if card.card_type == CardType.MCQ_SINGLE:
                 options = [CardOption(id=option.id, text=option.text) for option in payload.options or []]
                 correct_ids = payload.correct_answers or ([options[0].id] if options else [])
                 return McqSingleCardData(
-                    **base_kwargs,
+                    generator=generator,
+                    prompt=payload.question,
+                    rationale=rationale,
+                    glossary=glossary,
+                    connections=connections,
+                    references=references,
+                    numerical_ranges=numerical_ranges,
                     options=options,
                     correct_option_ids=correct_ids,
                 )
@@ -209,24 +214,54 @@ class AiStudyCardService:
                 options = [CardOption(id=option.id, text=option.text) for option in payload.options or []]
                 correct_ids = payload.correct_answers or [option.id for option in options[:2]]
                 return McqMultiCardData(
-                    **base_kwargs,
+                    generator=generator,
+                    prompt=payload.question,
+                    rationale=rationale,
+                    glossary=glossary,
+                    connections=connections,
+                    references=references,
+                    numerical_ranges=numerical_ranges,
                     options=options,
                     correct_option_ids=correct_ids,
                 )
 
             if card.card_type == CardType.WRITTEN:
                 expected = payload.correct_answers[0] if payload.correct_answers else None
-                return WrittenCardData(**base_kwargs, expected_answer=expected)
+                return WrittenCardData(
+                    generator=generator,
+                    prompt=payload.question,
+                    rationale=rationale,
+                    glossary=glossary,
+                    connections=connections,
+                    references=references,
+                    numerical_ranges=numerical_ranges,
+                    expected_answer=expected,
+                )
 
             if card.card_type == CardType.TRUE_FALSE:
                 answer = self._parse_boolean_answer(payload.correct_answers)
                 if answer is None:
                     answer = True
-                return TrueFalseCardData(**base_kwargs, correct_answer=answer)
+                return TrueFalseCardData(
+                    generator=generator,
+                    prompt=payload.question,
+                    rationale=rationale,
+                    glossary=glossary,
+                    connections=connections,
+                    references=references,
+                    numerical_ranges=numerical_ranges,
+                    correct_answer=answer,
+                )
 
             if card.card_type == CardType.CLOZE:
                 return ClozeCardData(
-                    **base_kwargs,
+                    generator=generator,
+                    prompt=payload.question,
+                    rationale=rationale,
+                    glossary=glossary,
+                    connections=connections,
+                    references=references,
+                    numerical_ranges=numerical_ranges,
                     cloze_answers=payload.correct_answers or [],
                 )
 
@@ -242,7 +277,13 @@ class AiStudyCardService:
                     except Exception:  # noqa: BLE001
                         continue
                 return EmqCardData(
-                    **base_kwargs,
+                    generator=generator,
+                    prompt=payload.question,
+                    rationale=rationale,
+                    glossary=glossary,
+                    connections=connections,
+                    references=references,
+                    numerical_ranges=numerical_ranges,
                     instructions=payload.references[0] if payload.references else None,
                     premises=payload.connections,
                     options=[option.text for option in payload.options or []],
@@ -276,6 +317,7 @@ class AiStudyCardService:
 
     @staticmethod
     def _parse_boolean_answer(correct_answers: Sequence[str]) -> bool | None:
+        """Parse boolean answers returned as strings."""
         if not correct_answers:
             return None
         candidate = correct_answers[0].strip().lower()
@@ -304,6 +346,7 @@ class AiStudyCardService:
         meta: AgentResult,
         cards_count: int,
     ) -> StudyCardGenerationSummary:
+        """Summarise the generation run for API consumers."""
         sources = [
             document.filename or f"uploaded-{index + 1}.pdf"
             for index, document in enumerate(documents)
@@ -321,6 +364,7 @@ class AiStudyCardService:
         documents: Sequence[PDFIngestionResult],
         meta: AgentResult,
     ) -> CardGeneratorMetadata:
+        """Produce generator metadata stored alongside each persisted card."""
         return CardGeneratorMetadata(
             model=meta.model_used,
             temperature=meta.temperature_applied,
@@ -339,6 +383,7 @@ class AiStudyCardService:
 
     @staticmethod
     def _extract_question_from_data(card_type: CardType | None, data: dict | None) -> str | None:
+        """Extract the question stem from persisted card rows."""
         if not isinstance(data, dict):
             return None
         parsed = parse_card_data(card_type, data)
@@ -348,6 +393,7 @@ class AiStudyCardService:
 
     @staticmethod
     def _extract_heading(markdown: str | None) -> str | None:
+        """Return the first non-empty heading or line from markdown text."""
         if not markdown:
             return None
         for line in markdown.splitlines():

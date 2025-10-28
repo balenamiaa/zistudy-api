@@ -1,3 +1,5 @@
+"""Utilities for reading PDFs into chunks suitable for LLM prompting."""
+
 from __future__ import annotations
 
 import base64
@@ -10,12 +12,16 @@ import fitz  # type: ignore[import-untyped]
 
 @dataclass(frozen=True, slots=True)
 class PDFTextSegment:
+    """Extracted text snippet paired with its originating page."""
+
     page_index: int
     content: str
 
 
 @dataclass(frozen=True, slots=True)
 class PDFImageFragment:
+    """Inline-friendly representation of an image extracted from a PDF."""
+
     page_index: int
     mime_type: str
     data_base64: str
@@ -23,6 +29,8 @@ class PDFImageFragment:
 
 @dataclass(frozen=True, slots=True)
 class PDFIngestionResult:
+    """Result bundle returned by the ingestion pipeline."""
+
     filename: str | None
     text_segments: Sequence[PDFTextSegment]
     images: Sequence[PDFImageFragment]
@@ -31,6 +39,8 @@ class PDFIngestionResult:
 
 @dataclass(frozen=True, slots=True)
 class UploadedPDF:
+    """In-memory representation of an uploaded PDF file."""
+
     filename: str | None
     payload: bytes
 
@@ -50,9 +60,11 @@ class DocumentIngestionService:
     async def ingest_pdf(
         self, payload: bytes, *, filename: str | None = None
     ) -> PDFIngestionResult:
+        """Extract text and images from the provided PDF payload."""
         return await anyio.to_thread.run_sync(self._extract, payload, filename)
 
     def _extract(self, payload: bytes, filename: str | None) -> PDFIngestionResult:
+        """Run the synchronous extraction process inside a worker thread."""
         document = fitz.open(stream=payload, filetype="pdf")
         try:
             text_segments: list[PDFTextSegment] = []
@@ -89,6 +101,7 @@ class DocumentIngestionService:
             document.close()
 
     def _chunk(self, page_index: int, content: str) -> Iterable[PDFTextSegment]:
+        """Split text into bounded segments to keep prompts concise."""
         sanitized = " ".join(content.split())
         size = self._text_chunk_size
         for start in range(0, len(sanitized), size):
@@ -97,6 +110,7 @@ class DocumentIngestionService:
                 yield PDFTextSegment(page_index=page_index, content=segment)
 
     def _truncate(self, segments: Sequence[PDFTextSegment]) -> Sequence[PDFTextSegment]:
+        """Limit total text length to avoid overwhelming downstream prompts."""
         total = 0
         output: list[PDFTextSegment] = []
         for segment in segments:

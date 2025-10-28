@@ -34,15 +34,26 @@ async def test_card_import_and_search(client: AsyncClient) -> None:
             {
                 "card_type": "mcq_single",
                 "data": {
-                    "question": "What is the powerhouse of the cell?",
-                    "options": ["Nucleus", "Mitochondria", "Ribosome"],
-                    "answer": 1,
+                    "prompt": "What is the powerhouse of the cell?",
+                    "options": [
+                        {"id": "A", "text": "Nucleus"},
+                        {"id": "B", "text": "Mitochondria"},
+                        {"id": "C", "text": "Ribosome"},
+                    ],
+                    "correct_option_ids": ["B"],
+                    "glossary": {},
+                    "connections": [],
+                    "references": [],
+                    "numerical_ranges": [],
                 },
                 "difficulty": 2,
             },
             {
                 "card_type": "note",
-                "data": {"text": "Photosynthesis occurs in chloroplasts."},
+                "data": {
+                    "title": "Photosynthesis",
+                    "markdown": "Photosynthesis occurs in chloroplasts.",
+                },
                 "difficulty": 1,
             },
         ]

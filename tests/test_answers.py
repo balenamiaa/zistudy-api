@@ -22,7 +22,18 @@ async def _create_card(client: AsyncClient, headers: dict[str, str]) -> int:
         "/api/v1/study-cards",
         json={
             "card_type": "mcq_single",
-            "data": {"question": "1+1?", "options": [1, 2], "answer": 1},
+            "data": {
+                "prompt": "1 + 1 equals?",
+                "options": [
+                    {"id": "A", "text": "1"},
+                    {"id": "B", "text": "2"},
+                ],
+                "correct_option_ids": ["B"],
+                "glossary": {},
+                "connections": [],
+                "references": [],
+                "numerical_ranges": [],
+            },
             "difficulty": 1,
         },
         headers=headers,
@@ -56,8 +67,8 @@ async def test_submit_and_history(client: AsyncClient) -> None:
         "/api/v1/answers",
         json={
             "study_card_id": card_id,
-            "answer_type": "mcq",
-            "data": {"selected": 1},
+            "answer_type": "mcq_single",
+            "data": {"selected_option_id": "B"},
             "is_correct": True,
         },
         headers=headers,

@@ -1,3 +1,5 @@
+"""Strategies that prepare Gemini-ready context from uploaded PDFs."""
+
 from __future__ import annotations
 
 import base64
@@ -20,6 +22,8 @@ logger = logging.getLogger(__name__)
 
 @dataclass(frozen=True)
 class PDFContext:
+    """Context bundle returned from a PDF strategy."""
+
     documents: Sequence[PDFIngestionResult]
     extra_parts: Sequence[GeminiTextPart | GeminiInlineDataPart | GeminiFilePart]
 
@@ -31,7 +35,7 @@ class PDFContextStrategy(Protocol):
         *,
         client: GenerativeClient,
     ) -> PDFContext:
-        ...
+        """Create a context payload for the specified PDFs."""
 
 
 class IngestedPDFContextStrategy(PDFContextStrategy):
@@ -44,6 +48,7 @@ class IngestedPDFContextStrategy(PDFContextStrategy):
         *,
         client: GenerativeClient,
     ) -> PDFContext:
+        """Extract text from PDFs and ignore binary assets."""
         logger.info(
             "Building ingested PDF context",
             extra={"file_count": len(files)},
@@ -75,6 +80,7 @@ class NativePDFContextStrategy(PDFContextStrategy):
         *,
         client: GenerativeClient,
     ) -> PDFContext:
+        """Embed small PDFs inline and upload large PDFs to Gemini's file API."""
         logger.info(
             "Building native PDF context",
             extra={

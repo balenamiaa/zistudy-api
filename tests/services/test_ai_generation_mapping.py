@@ -4,8 +4,8 @@ from typing import Any, Sequence
 from unittest.mock import AsyncMock, create_autospec
 
 import pytest
-from sqlalchemy.ext.asyncio import AsyncSession
 from pydantic import ValidationError
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from zistudy_api.domain.enums import CardType
 from zistudy_api.domain.schemas.ai import (
@@ -237,7 +237,7 @@ async def test_persist_generated_cards_respects_retention_preferences(monkeypatc
     service = _service()
     mock_card_service = AsyncMock()
     mock_card_service.import_card_batch.return_value = []
-    service._card_service = mock_card_service  # type: ignore[attr-defined]
+    service._card_service = mock_card_service
 
     cards = [
         AiGeneratedCard(
@@ -264,6 +264,43 @@ async def test_persist_generated_cards_respects_retention_preferences(monkeypatc
 
     payload = mock_card_service.import_card_batch.call_args.args[0]
     assert len(payload.cards) == 1, "Retention aid should not be appended when note not allowed"
+
+
+@pytest.mark.asyncio
+async def test_persist_generated_cards_appends_retention_note(monkeypatch) -> None:
+    service = _service()
+    mock_card_service = AsyncMock()
+    mock_card_service.import_card_batch.return_value = []
+    service._card_service = mock_card_service
+
+    cards = [
+        AiGeneratedCard(
+            card_type=CardType.MCQ_SINGLE,
+            difficulty=1,
+            payload=CARD_CASES[0][1],
+        )
+    ]
+    request = StudyCardGenerationRequest(
+        target_card_count=1,
+        include_retention_aid=True,
+    )
+    documents: list[PDFIngestionResult] = []
+    meta = AgentResult(
+        cards=cards,
+        retention_aid=AiRetentionAid(markdown="# Retention Aid\n- Remember this"),
+        model_used="model",
+        temperature_applied=0.2,
+        requested_card_count=1,
+    )
+
+    await service._persist_generated_cards(cards, request=request, documents=documents, meta=meta)
+
+    payload = mock_card_service.import_card_batch.call_args.args[0]
+    assert len(payload.cards) == 2
+    retention_card = payload.cards[-1]
+    assert retention_card.card_type is CardType.NOTE
+    assert isinstance(retention_card.data, NoteCardData)
+    assert retention_card.data.title == "Retention Aid"
 
 
 @pytest.mark.asyncio
@@ -319,7 +356,7 @@ async def test_generate_from_pdfs_passes_context(monkeypatch) -> None:
         }
     )
     mock_card_service.import_card_batch.return_value = [sample_read]
-    service._card_service = mock_card_service  # type: ignore[attr-defined]
+    service._card_service = mock_card_service
 
     result = await service.generate_from_pdfs(
         StudyCardGenerationRequest(target_card_count=1),
@@ -329,3 +366,100 @@ async def test_generate_from_pdfs_passes_context(monkeypatch) -> None:
     assert result.cards == [sample_read]
     assert result.retention_aid is None
     assert isinstance(result.raw_generation, AiGeneratedStudyCardSet)
+
+
+def test_map_card_to_data_note_derives_title_from_markdown_heading() -> None:
+    service = _service()
+    payload = AiGeneratedPayload(
+        question="Summarise renal pearls.",
+        options=[],
+        correct_answers=[],
+        rationale=AiGeneratedRationale(primary="# Derived Title\n- Point", alternatives={}),
+        connections=[],
+        glossary={},
+        numerical_ranges=[],
+        references=[],
+    )
+    card = AiGeneratedCard(card_type=CardType.NOTE, difficulty=1, payload=payload)
+
+    mapped = service._map_card_to_data(card, GENERATOR_META)
+
+    assert isinstance(mapped, NoteCardData)
+    assert mapped.title == "Derived Title"
+    assert mapped.markdown.startswith("# Derived Title")
+
+
+def test_map_card_to_data_note_defaults_title_when_heading_empty() -> None:
+    service = _service()
+    payload = AiGeneratedPayload(
+        question="Summarise renal pearls.",
+        options=[],
+        correct_answers=[],
+        rationale=AiGeneratedRationale(primary="#    \n- Point", alternatives={}),
+        connections=[],
+        glossary={},
+        numerical_ranges=[],
+        references=[],
+    )
+    card = AiGeneratedCard(card_type=CardType.NOTE, difficulty=1, payload=payload)
+
+    mapped = service._map_card_to_data(card, GENERATOR_META)
+
+    assert isinstance(mapped, NoteCardData)
+    assert mapped.title == "Note"
+
+
+def test_map_card_to_data_note_rejects_empty_markdown() -> None:
+    service = _service()
+    payload = AiGeneratedPayload(
+        question="Summarise renal pearls.",
+        options=[],
+        correct_answers=[],
+        rationale=AiGeneratedRationale(primary="   ", alternatives={}),
+        connections=[],
+        glossary={},
+        numerical_ranges=[],
+        references=[],
+    )
+    card = AiGeneratedCard(card_type=CardType.NOTE, difficulty=1, payload=payload)
+
+    with pytest.raises(ValueError):
+        service._map_card_to_data(card, GENERATOR_META)
+
+
+def test_card_generator_metadata_sets_schema_version() -> None:
+    service = _service()
+    request = StudyCardGenerationRequest(
+        target_card_count=2,
+        topics=["Cardiology"],
+        preferred_card_types=[CardType.MCQ_SINGLE],
+        existing_card_ids=[1],
+    )
+    documents = [
+        PDFIngestionResult(
+            filename="source.pdf",
+            text_segments=(),
+            images=(),
+            page_count=1,
+        )
+    ]
+    agent_result = AgentResult(
+        cards=[],
+        retention_aid=None,
+        model_used="model",
+        temperature_applied=0.2,
+        requested_card_count=2,
+    )
+
+    meta = service._card_generator_metadata(request, documents, agent_result)
+
+    assert meta.schema_version == GENERATOR_META.schema_version
+    assert meta.sources == ["source.pdf"]
+
+
+def test_parse_boolean_answer_interprets_values() -> None:
+    service = _service()
+
+    assert service._parse_boolean_answer(["TRUE"]) is True
+    assert service._parse_boolean_answer(["0"]) is False
+    assert service._parse_boolean_answer(["maybe"]) is None

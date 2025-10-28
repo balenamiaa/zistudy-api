@@ -1,3 +1,5 @@
+"""Prompt templates used by the study card generation agents."""
+
 from __future__ import annotations
 
 STUDY_CARD_SYSTEM_PROMPT = """

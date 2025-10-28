@@ -1,6 +1,8 @@
+"""Typed study card payloads and normalisation helpers."""
+
 from __future__ import annotations
 
-from typing import Annotated, Any, TypeVar
+from typing import Annotated, Any, cast
 
 from pydantic import Field, ValidationError, model_validator
 
@@ -15,12 +17,12 @@ Increment this value whenever any card payload structure or metadata changes in 
 backward-incompatible way so downstream consumers can react to schema upgrades.
 """
 
-T = TypeVar("T", bound=BaseSchema)
-
 Difficulty = Annotated[int, Field(ge=1, le=5)]
 
 
 class CardGeneratorMetadata(BaseSchema):
+    """Describe the AI run responsible for generating a card payload."""
+
     model: str = Field(..., description="Identifier of the model that produced the card.")
     temperature: float | None = Field(default=None)
     requested_card_count: int | None = Field(default=None)
@@ -39,6 +41,8 @@ class CardGeneratorMetadata(BaseSchema):
 
 
 class CardOption(BaseSchema):
+    """Single multiple-choice option."""
+
     id: str
     text: str
 
@@ -46,6 +50,8 @@ class CardOption(BaseSchema):
 
 
 class CardRationale(BaseSchema):
+    """Structured explanation describing the correct and alternative answers."""
+
     primary: str
     alternatives: dict[str, str] = Field(default_factory=dict)
 
@@ -53,6 +59,8 @@ class CardRationale(BaseSchema):
 
 
 class BaseCardData(BaseSchema):
+    """Common fields shared by all card payloads."""
+
     generator: CardGeneratorMetadata | None = Field(
         default=None, description="Metadata describing how the card was produced."
     )
@@ -61,11 +69,15 @@ class BaseCardData(BaseSchema):
 
 
 class NoteCardData(BaseCardData):
+    """Markdown note that complements active recall questions."""
+
     title: str
     markdown: str
 
 
 class QuestionCardData(BaseCardData):
+    """Base payload for questions that expect an answer from the learner."""
+
     prompt: str
     rationale: CardRationale | None = None
     glossary: dict[str, str] = Field(default_factory=dict)
@@ -75,6 +87,8 @@ class QuestionCardData(BaseCardData):
 
 
 class MultipleChoiceCardData(QuestionCardData):
+    """Shared structure for MCQ style cards."""
+
     options: list[CardOption] = Field(default_factory=list)
     correct_option_ids: list[str] = Field(default_factory=list)
 
@@ -90,6 +104,8 @@ class MultipleChoiceCardData(QuestionCardData):
 
 
 class McqSingleCardData(MultipleChoiceCardData):
+    """Single-answer multiple choice question."""
+
     @model_validator(mode="after")
     def _validate_single(self) -> McqSingleCardData:
         if len(self.correct_option_ids) != 1:
@@ -98,6 +114,8 @@ class McqSingleCardData(MultipleChoiceCardData):
 
 
 class McqMultiCardData(MultipleChoiceCardData):
+    """Multiple-answer multiple choice question."""
+
     @model_validator(mode="after")
     def _validate_multi(self) -> McqMultiCardData:
         if len(self.correct_option_ids) < 2:
@@ -106,18 +124,26 @@ class McqMultiCardData(MultipleChoiceCardData):
 
 
 class WrittenCardData(QuestionCardData):
+    """Written response question expecting a free-text answer."""
+
     expected_answer: str | None = Field(default=None)
 
 
 class TrueFalseCardData(QuestionCardData):
+    """True/false card."""
+
     correct_answer: bool
 
 
 class ClozeCardData(QuestionCardData):
+    """Cloze deletion card capturing the hidden tokens."""
+
     cloze_answers: list[str] = Field(default_factory=list)
 
 
 class EmqMatch(BaseSchema):
+    """Mapping between EMQ premise and option."""
+
     premise_index: int
     option_index: int
 
@@ -125,6 +151,8 @@ class EmqMatch(BaseSchema):
 
 
 class EmqCardData(QuestionCardData):
+    """Extended matching question payload."""
+
     instructions: str | None = Field(default=None)
     premises: list[str] = Field(default_factory=list)
     options: list[str] = Field(default_factory=list)
@@ -132,6 +160,8 @@ class EmqCardData(QuestionCardData):
 
 
 class GenericCardData(BaseCardData):
+    """Fallback container for payloads that we cannot normalise."""
+
     payload: dict[str, Any] | None = Field(default=None)
 
 
@@ -147,50 +177,6 @@ CardData = (
 )
 
 
-def _maybe_model(model: type[T], value: Any) -> T | None:
-    if value is None or isinstance(value, model):
-        return value if isinstance(value, model) else None
-    if isinstance(value, dict):
-        try:
-            return model.model_validate(value)
-        except ValidationError:
-            return None
-    return None
-
-
-def _coerce_str_list(value: Any) -> list[str]:
-    if isinstance(value, list):
-        return [str(item) for item in value]
-    if isinstance(value, tuple):
-        return [str(item) for item in value]
-    if value is None:
-        return []
-    return [str(value)]
-
-
-def _coerce_dict(value: Any) -> dict[str, Any]:
-    if isinstance(value, dict):
-        return value
-    return {}
-
-
-def _parse_bool(value: Any) -> bool | None:
-    if isinstance(value, bool):
-        return value
-    if isinstance(value, str):
-        lowered = value.strip().lower()
-        if lowered in {"true", "t", "1", "yes", "y"}:
-            return True
-        if lowered in {"false", "f", "0", "no", "n"}:
-            return False
-    if isinstance(value, (int, float)):
-        if value == 1:
-            return True
-        if value == 0:
-            return False
-    return None
-
-
 _CARD_TYPE_TO_MODEL: dict[CardType, type[BaseCardData]] = {
     CardType.NOTE: NoteCardData,
     CardType.MCQ_SINGLE: McqSingleCardData,
@@ -202,146 +188,39 @@ _CARD_TYPE_TO_MODEL: dict[CardType, type[BaseCardData]] = {
 }
 
 
-def _convert_card_data(card_type: CardType | None, raw_data: Any) -> CardData | None:
-    if not isinstance(raw_data, dict):
-        return None
-
-    generator = _maybe_model(CardGeneratorMetadata, raw_data.get("generator"))
-    payload = raw_data.get("payload")
-    payload_dict = payload if isinstance(payload, dict) else raw_data
-
-    if card_type == CardType.NOTE:
-        markdown = payload_dict.get("markdown")
-        if isinstance(markdown, str):
-            title_value = payload_dict.get("title")
-            title_str = title_value.strip() if isinstance(title_value, str) and title_value.strip() else None
-            if not title_str:
-                heading = payload_dict.get("heading")
-                if isinstance(heading, str) and heading.strip():
-                    title_str = heading.strip()
-            if not title_str:
-                title_str = "Note"
-            return NoteCardData(generator=generator, title=title_str, markdown=markdown)
-        return None
-
-    if card_type in _CARD_TYPE_TO_MODEL and card_type is not None:
-        prompt = payload_dict.get("prompt") or payload_dict.get("question")
-        if not isinstance(prompt, str):
-            return None
-        rationale = _maybe_model(CardRationale, payload_dict.get("rationale"))
-        base_kwargs = {
-            "generator": generator,
-            "prompt": prompt,
-            "rationale": rationale,
-            "glossary": _coerce_dict(payload_dict.get("glossary")),
-            "connections": _coerce_str_list(payload_dict.get("connections")),
-            "references": _coerce_str_list(payload_dict.get("references")),
-            "numerical_ranges": _coerce_str_list(
-                payload_dict.get("numerical_ranges") or payload_dict.get("numericalRanges")
-            ),
-        }
-
-        if card_type in {CardType.MCQ_SINGLE, CardType.MCQ_MULTI}:
-            options: list[CardOption] = []
-            for option in payload_dict.get("options") or []:
-                try:
-                    options.append(CardOption.model_validate(option))
-                except ValidationError:
-                    continue
-            if not options:
-                return None
-            correct_ids = _coerce_str_list(
-                payload_dict.get("correct_option_ids") or payload_dict.get("correct_answers")
-            )
-            if card_type == CardType.MCQ_SINGLE:
-                if len(correct_ids) != 1:
-                    return None
-                return McqSingleCardData(
-                    **base_kwargs,
-                    options=options,
-                    correct_option_ids=[correct_ids[0]],
-                )
-            if len(correct_ids) < 2:
-                return None
-            return McqMultiCardData(
-                **base_kwargs,
-                options=options,
-                correct_option_ids=correct_ids,
-            )
-
-        if card_type == CardType.WRITTEN:
-            correct_answers = _coerce_str_list(payload_dict.get("correct_answers"))
-            expected = correct_answers[0] if correct_answers else None
-            return WrittenCardData(**base_kwargs, expected_answer=expected)
-
-        if card_type == CardType.TRUE_FALSE:
-            correct_answers = _coerce_str_list(payload_dict.get("correct_answers"))
-            answer = _parse_bool(correct_answers[0]) if correct_answers else None
-            if answer is None:
-                return None
-            return TrueFalseCardData(**base_kwargs, correct_answer=answer)
-
-        if card_type == CardType.CLOZE:
-            return ClozeCardData(
-                **base_kwargs,
-                cloze_answers=_coerce_str_list(
-                    payload_dict.get("cloze_answers") or payload_dict.get("correct_answers")
-                ),
-            )
-
-        if card_type == CardType.EMQ:
-            premises = _coerce_str_list(payload_dict.get("premises"))
-            emq_options = _coerce_str_list(payload_dict.get("options"))
-            matches_raw = payload_dict.get("matches") or payload_dict.get("correct_matches") or []
-            matches: list[EmqMatch] = []
-            for match in matches_raw:
-                try:
-                    matches.append(EmqMatch.model_validate(match))
-                except ValidationError:
-                    continue
-            return EmqCardData(
-                **base_kwargs,
-                instructions=payload_dict.get("instructions"),
-                premises=premises,
-                options=emq_options,
-                matches=matches,
-            )
-
+def _coerce_generator(value: Any) -> CardGeneratorMetadata | None:
+    if value is None or isinstance(value, CardGeneratorMetadata):
+        return value if isinstance(value, CardGeneratorMetadata) else None
+    if isinstance(value, dict):
+        return CardGeneratorMetadata.model_validate(value)
     return None
 
 
 def parse_card_data(card_type: CardType | None, raw_data: Any) -> CardData:
-    if isinstance(
-        raw_data,
-        (
-            NoteCardData,
-            McqSingleCardData,
-            McqMultiCardData,
-            WrittenCardData,
-            TrueFalseCardData,
-            ClozeCardData,
-            EmqCardData,
-            GenericCardData,
-        ),
-    ):
-        return raw_data
+    """Normalise stored payloads into the strongly typed card data models."""
 
-    converted = _convert_card_data(card_type, raw_data)
-    if converted is not None:
-        return converted
+    if isinstance(raw_data, BaseCardData):
+        return cast(CardData, raw_data)
 
-    generator = _maybe_model(
-        CardGeneratorMetadata,
-        raw_data.get("generator") if isinstance(raw_data, dict) else None,
-    )
-    payload_dict: dict[str, Any] | None = None
-    if isinstance(raw_data, dict):
-        payload_field = raw_data.get("payload")
-        payload_dict = payload_field if isinstance(payload_field, dict) else raw_data
-    return GenericCardData(generator=generator, payload=payload_dict)
+    if not isinstance(raw_data, dict):
+        raise TypeError("Study card payload must be a JSON object.")
+
+    if card_type is None:
+        return GenericCardData(generator=_coerce_generator(raw_data.get("generator")), payload=raw_data)
+
+    model = _CARD_TYPE_TO_MODEL.get(card_type)
+    if model is None:
+        return GenericCardData(generator=_coerce_generator(raw_data.get("generator")), payload=raw_data)
+
+    try:
+        return cast(CardData, model.model_validate(raw_data))
+    except ValidationError as exc:  # pragma: no cover - surfaced to caller
+        raise ValueError(f"Invalid study card payload for type {card_type.value}.") from exc
 
 
 class StudyCardBase(BaseSchema):
+    """Common fields for writable and readable study card representations."""
+
     card_type: CardType = Field(..., description="Discriminator for the study card type.")
     data: CardData = Field(..., description="Structured card content.")
     difficulty: Difficulty = Field(1, description="Difficulty on a 1–5 scale.")
@@ -370,15 +249,21 @@ class StudyCardCreate(StudyCardBase):
 
 
 class StudyCardUpdate(BaseSchema):
+    """Partial update payload for study cards."""
+
     data: CardData | dict[str, Any] | None = None
     difficulty: Difficulty | None = None
 
 
 class StudyCardRead(StudyCardBase, TimestampedSchema):
+    """Card payload returned by the API and persistence layer."""
+
     id: int = Field(..., description="Primary identifier for the study card.")
 
 
 class CardSearchFilters(BaseSchema):
+    """Optional filters applied during study card search."""
+
     card_types: list[CardType] | None = Field(default=None)
     min_difficulty: Difficulty | None = Field(default=None)
     max_difficulty: Difficulty | None = Field(default=None)
@@ -386,6 +271,8 @@ class CardSearchFilters(BaseSchema):
 
 
 class CardSearchRequest(BaseSchema):
+    """Request payload for full-text search across study cards."""
+
     query: str | None = Field(default=None, description="Free text to match against card data.")
     filters: CardSearchFilters = Field(default_factory=CardSearchFilters)
     page: int = Field(1, ge=1)
@@ -393,6 +280,8 @@ class CardSearchRequest(BaseSchema):
 
 
 class CardSearchResult(BaseSchema):
+    """Container bundling a card and its relevance metadata."""
+
     card: StudyCardRead
     score: float | None = Field(
         default=None, description="Relative relevance score when available."
@@ -409,6 +298,8 @@ class StudyCardCollection(PaginatedResponse[StudyCardRead]):
 
 
 class StudyCardImportPayload(BaseSchema):
+    """Batch import payload used for AI generated cards."""
+
     cards: list[StudyCardCreate] = Field(..., min_length=1)
 
 

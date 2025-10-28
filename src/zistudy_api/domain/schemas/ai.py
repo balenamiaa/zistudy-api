@@ -1,3 +1,5 @@
+"""Schema objects capturing AI generation inputs and outputs."""
+
 from __future__ import annotations
 
 from typing import Literal
@@ -10,6 +12,8 @@ from zistudy_api.domain.schemas.study_cards import Difficulty, StudyCardRead
 
 
 class StudyCardGenerationRequest(BaseSchema):
+    """Payload submitted when requesting AI generated cards."""
+
     topics: list[str] = Field(default_factory=list, description="Core subjects to emphasise.")
     clinical_focus: list[str] = Field(
         default_factory=list,
@@ -61,6 +65,8 @@ class StudyCardGenerationRequest(BaseSchema):
 
 
 class StudyCardGenerationSummary(BaseSchema):
+    """Summary of the generation run returned to clients."""
+
     card_count: int
     sources: list[str] = Field(
         default_factory=list,
@@ -71,11 +77,15 @@ class StudyCardGenerationSummary(BaseSchema):
 
 
 class AiGeneratedCardOption(BaseSchema):
+    """Option emitted by the AI model for MCQ style cards."""
+
     id: str = Field(..., description="Stable identifier for the option (e.g. letter).")
     text: str = Field(..., description="Option text rendered to the learner.")
 
 
 class AiGeneratedRationale(BaseSchema):
+    """Structured teaching content for a generated question."""
+
     primary: str = Field(..., description="Primary explanation for the correct answer.")
     alternatives: dict[str, str] = Field(
         default_factory=dict,
@@ -84,6 +94,8 @@ class AiGeneratedRationale(BaseSchema):
 
 
 class AiGeneratedPayload(BaseSchema):
+    """Raw payload returned by the language model."""
+
     question: str = Field(..., description="Full exam-style stem or prompt.")
     options: list[AiGeneratedCardOption] | None = Field(
         default=None, description="Options for MCQ/EMQ cards when relevant."
@@ -112,16 +124,22 @@ class AiGeneratedPayload(BaseSchema):
 
 
 class AiGeneratedCard(BaseSchema):
+    """Generated card enriched with metadata."""
+
     card_type: CardType
     difficulty: Difficulty
     payload: AiGeneratedPayload
 
 
 class AiRetentionAid(BaseSchema):
+    """Markdown retention summary returned alongside questions."""
+
     markdown: str = Field(..., description="Markdown-formatted retention summary.")
 
 
 class AiGeneratedStudyCardSet(BaseSchema):
+    """Complete response bundle returned by Gemini."""
+
     cards: list[AiGeneratedCard]
     retention_aid: AiRetentionAid | None = Field(
         default=None,
@@ -130,12 +148,16 @@ class AiGeneratedStudyCardSet(BaseSchema):
 
 
 class StudyCardGenerationResponse(BaseSchema):
+    """API response structure exposed to clients."""
+
     cards: list[AiGeneratedCard]
     retention_aid: AiRetentionAid | None = None
     summary: StudyCardGenerationSummary
 
 
 class StudyCardGenerationResult(BaseSchema):
+    """Internal persistence result paired with the raw generation payload."""
+
     cards: list[StudyCardRead]
     retention_aid: AiRetentionAid | None = None
     summary: StudyCardGenerationSummary
