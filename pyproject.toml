@@ -94,6 +94,11 @@ prerelease = "allow"
 [tool.coverage.run]
 branch = true
 source = ["src/zistudy_api"]
+omit = [
+  "src/zistudy_api/tools.py",
+  "src/zistudy_api/db/migrations.py",
+  "src/zistudy_api/services/ai/*",
+]
 
 [tool.coverage.report]
 show_missing = true

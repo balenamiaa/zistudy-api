@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import pytest
 
+from zistudy_api.config.settings import get_settings
 from tests.utils import create_pdf_with_text_and_image
 from zistudy_api.domain.schemas.ai import StudyCardGenerationRequest
 from zistudy_api.domain.schemas.jobs import JobStatus
@@ -125,6 +126,28 @@ async def test_generate_study_cards_rejects_invalid_pdf_type(app, client) -> Non
     )
 
     assert response.status_code == 400
+
+
+async def test_generate_study_cards_rejects_oversized_pdf(app, client, monkeypatch) -> None:
+    token = await _authorize(client)
+    headers = {"Authorization": f"Bearer {token}"}
+    payload = StudyCardGenerationRequest(topics=["Cardiology"]).model_dump_json()
+
+    base_settings = get_settings()
+    reduced_settings = base_settings.model_copy(update={"ai_pdf_max_bytes": 1024})
+    monkeypatch.setattr("zistudy_api.api.routes.ai.get_settings", lambda: reduced_settings)
+
+    oversized_pdf = b"%PDF-" + b"x" * 2048
+    response = await client.post(
+        "/api/v1/ai/study-cards/generate",
+        files=[
+            ("payload", (None, payload)),
+            ("pdfs", ("big.pdf", oversized_pdf, "application/pdf")),
+        ],
+        headers=headers,
+    )
+
+    assert response.status_code == 413
 
 
 async def test_generate_study_cards_requires_authentication(client) -> None:

@@ -157,7 +157,8 @@ async def test_ai_service_persists_cards(session_maker) -> None:
                     options=[CardOption(id="A", text="Early broad-spectrum antibiotics")],
                     correct_option_ids=["A"],
                 ),
-            )
+            ),
+            owner=None,
         )
 
     async with session_maker() as session:

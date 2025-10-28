@@ -266,12 +266,20 @@ class AiStudyCardService:
                 )
 
             if card.card_type == CardType.EMQ:
-                matches = []
-                for index, option_id in enumerate(payload.correct_answers or []):
+                matches: list[EmqMatch] = []
+                option_lookup = {
+                    option.id: idx
+                    for idx, option in enumerate(payload.options or [])
+                    if option.id is not None
+                }
+                for premise_index, option_id in enumerate(payload.correct_answers or []):
+                    match_index = option_lookup.get(option_id)
+                    if match_index is None:
+                        continue
                     try:
                         matches.append(
                             EmqMatch.model_validate(
-                                {"premise_index": index, "option_index": int(option_id)}
+                                {"premise_index": premise_index, "option_index": match_index}
                             )
                         )
                     except Exception:  # noqa: BLE001

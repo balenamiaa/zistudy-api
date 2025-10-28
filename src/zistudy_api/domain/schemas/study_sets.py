@@ -50,8 +50,6 @@ class StudySetRead(StudySetBase, TimestampedSchema):
         return self.owner_id == user_id
 
     def can_modify(self, user_id: str | None) -> bool:
-        if not self.owner_id and not user_id:
-            return True
         if not self.owner_id or not user_id:
             return False
         return self.owner_id == user_id

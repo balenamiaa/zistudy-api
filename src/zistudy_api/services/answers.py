@@ -29,6 +29,8 @@ class AnswerService:
         card = await self._cards.get_by_id(payload.study_card_id)
         if card is None:
             raise KeyError(f"Study card {payload.study_card_id} not found")
+        if card.owner_id not in (None, user_id):
+            raise PermissionError("Forbidden")
 
         entity = await self._answers.create(user_id=user_id, payload=payload)
         await self._session.commit()
@@ -65,6 +67,12 @@ class AnswerService:
         self, *, study_card_id: int, user_id: str | None = None
     ) -> AnswerStats:
         """Compute aggregate accuracy metrics for a study card."""
+        card = await self._cards.get_by_id(study_card_id)
+        if card is None:
+            raise KeyError(f"Study card {study_card_id} not found")
+        if user_id is not None and card.owner_id not in (None, user_id):
+            raise PermissionError("Forbidden")
+
         total, correct = await self._answers.stats_for_card(
             study_card_id=study_card_id, user_id=user_id
         )

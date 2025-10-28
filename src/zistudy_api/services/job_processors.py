@@ -31,6 +31,8 @@ SESSION_FACTORY: async_sessionmaker | None = None
 
 logger = logging.getLogger(__name__)
 
+GENERIC_JOB_ERROR_MESSAGE = "Job failed; please contact support."
+
 
 def _factory() -> async_sessionmaker:
     global SESSION_FACTORY
@@ -101,13 +103,13 @@ async def _process_clone_job(job_id: int) -> None:
             )
             await session.commit()
         except Exception as exc:  # pragma: no cover
-            await job_repo.set_status(
-                job_id,
-                status=JobStatus.FAILED.value,
-                completed_at=datetime.now(tz=timezone.utc),
-                error=str(exc),
+            await _mark_job_failed(
+                job_repo=job_repo,
+                job_id=job_id,
+                session=session,
+                log_message="Clone study set job failed",
+                exc=exc,
             )
-            await session.commit()
             raise
 
 
@@ -148,13 +150,13 @@ async def _process_export_job(job_id: int) -> None:
             )
             await session.commit()
         except Exception as exc:  # pragma: no cover
-            await job_repo.set_status(
-                job_id,
-                status=JobStatus.FAILED.value,
-                completed_at=datetime.now(tz=timezone.utc),
-                error=str(exc),
+            await _mark_job_failed(
+                job_repo=job_repo,
+                job_id=job_id,
+                session=session,
+                log_message="Export study set job failed",
+                exc=exc,
             )
-            await session.commit()
             raise
 
 
@@ -244,16 +246,12 @@ async def _process_ai_generation_job(job_id: int) -> None:
                 extra={"job_id": job_id, "card_count": card_count},
             )
         except Exception as exc:  # pragma: no cover
-            await job_repo.set_status(
-                job_id,
-                status=JobStatus.FAILED.value,
-                completed_at=datetime.now(tz=timezone.utc),
-                error=str(exc),
-            )
-            await session.commit()
-            logger.exception(
-                "AI generation job failed",
-                extra={"job_id": job_id, "error": str(exc)},
+            await _mark_job_failed(
+                job_repo=job_repo,
+                job_id=job_id,
+                session=session,
+                log_message="AI generation job failed",
+                exc=exc,
             )
             raise
         finally:
@@ -261,3 +259,19 @@ async def _process_ai_generation_job(job_id: int) -> None:
 
 
 __all__ = ["process_clone_job", "process_export_job", "process_ai_generation_job"]
+async def _mark_job_failed(
+    *,
+    job_repo: JobRepository,
+    job_id: int,
+    session,
+    log_message: str,
+    exc: Exception,
+) -> None:
+    logger.exception(log_message, extra={"job_id": job_id})
+    await job_repo.set_status(
+        job_id,
+        status=JobStatus.FAILED.value,
+        completed_at=datetime.now(tz=timezone.utc),
+        error=GENERIC_JOB_ERROR_MESSAGE,
+    )
+    await session.commit()

@@ -37,6 +37,11 @@ def create_app(settings: Settings | None = None) -> FastAPI:
         lifespan=_lifespan,
     )
 
+    if settings.environment == "production" and (
+        not settings.cors_origins or settings.cors_origins == ["*"]
+    ):
+        raise RuntimeError("Production deployments must configure explicit CORS origins.")
+
     if settings.cors_origins:
         from fastapi.middleware.cors import CORSMiddleware
 

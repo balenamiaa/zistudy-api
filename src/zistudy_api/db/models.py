@@ -50,6 +50,7 @@ class UserAccount(Base):
     api_keys: Mapped[list["ApiKey"]] = relationship(
         back_populates="user", cascade="all, delete-orphan"
     )
+    study_cards: Mapped[list["StudyCard"]] = relationship(back_populates="owner")
 
 
 class StudySet(Base):
@@ -112,6 +113,7 @@ class StudyCard(Base):
         Index("ix_study_cards_difficulty", "difficulty"),
         Index("ix_study_cards_created_at", "created_at"),
         Index("ix_study_cards_updated_at", "updated_at"),
+        Index("ix_study_cards_owner_id", "owner_id"),
     )
 
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
@@ -120,6 +122,10 @@ class StudyCard(Base):
     )
     card_type: Mapped[CardType] = mapped_column(String(50), nullable=False)
     difficulty: Mapped[int] = mapped_column(Integer, nullable=False, default=1)
+    owner_id: Mapped[str | None] = mapped_column(
+        String(36), ForeignKey("users.id", ondelete="SET NULL"), nullable=True
+    )
+    search_document: Mapped[str] = mapped_column(Text, default="", nullable=False)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utcnow)
     updated_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), default=utcnow, onupdate=utcnow
@@ -131,6 +137,7 @@ class StudyCard(Base):
     study_sets: Mapped[list["StudySetCard"]] = relationship(
         back_populates="study_card", cascade="all, delete-orphan"
     )
+    owner: Mapped[UserAccount | None] = relationship(back_populates="study_cards")
 
 
 class StudySetCard(Base):
@@ -157,7 +164,6 @@ class StudySetCard(Base):
 class Answer(Base):
     __tablename__ = "answers"
     __table_args__ = (
-        UniqueConstraint("user_id", "study_card_id", name="uq_answer_user_card"),
         Index("ix_answers_user_id", "user_id"),
         Index("ix_answers_study_card_id", "study_card_id"),
         Index("ix_answers_is_correct", "is_correct"),

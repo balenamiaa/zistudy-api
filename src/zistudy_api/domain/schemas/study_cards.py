@@ -259,6 +259,10 @@ class StudyCardRead(StudyCardBase, TimestampedSchema):
     """Card payload returned by the API and persistence layer."""
 
     id: int = Field(..., description="Primary identifier for the study card.")
+    owner_id: str | None = Field(
+        default=None,
+        description="User identifier for the card owner. ``None`` indicates a system-owned card.",
+    )
 
 
 class CardSearchFilters(BaseSchema):

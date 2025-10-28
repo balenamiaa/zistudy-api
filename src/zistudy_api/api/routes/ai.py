@@ -12,6 +12,7 @@ from zistudy_api.domain.schemas.auth import SessionUser
 from zistudy_api.domain.schemas.jobs import JobSummary
 from zistudy_api.services.job_processors import process_ai_generation_job
 from zistudy_api.services.jobs import ProcessorTask
+from zistudy_api.config.settings import get_settings
 
 router = APIRouter(prefix="/ai", tags=["AI"])
 
@@ -23,7 +24,6 @@ PDF_CONTENT_TYPES = {
     "text/pdf",
     "text/x-pdf",
 }
-
 
 @router.post(
     "/study-cards/generate",
@@ -46,6 +46,8 @@ async def generate_study_cards(
         ) from exc
 
     encoded_documents: list[dict[str, str | None]] = []
+    settings = get_settings()
+    max_pdf_bytes = settings.ai_pdf_max_bytes
     for upload in pdfs:
         try:
             if upload.content_type and upload.content_type not in PDF_CONTENT_TYPES:
@@ -54,7 +56,12 @@ async def generate_study_cards(
                     detail=f"Unsupported content type: {upload.content_type}",
                 )
 
-            data = await upload.read()
+            data = await upload.read(max_pdf_bytes + 1)
+            if len(data) > max_pdf_bytes:
+                raise HTTPException(
+                    status_code=status.HTTP_413_REQUEST_ENTITY_TOO_LARGE,
+                    detail="PDF exceeds maximum allowed size.",
+                )
             if data:
                 encoded_documents.append(
                     {

@@ -5,6 +5,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from zistudy_api.api.dependencies import AsyncSessionDependency, get_current_session_user
+from zistudy_api.config.settings import get_settings
 from zistudy_api.domain.schemas.answers import (
     AnswerCreate,
     AnswerHistory,
@@ -25,13 +26,15 @@ def get_answer_service(session: AsyncSessionDependency) -> AnswerService:
 AnswerServiceDependency = Annotated[AnswerService, Depends(get_answer_service)]
 CurrentUserDependency = Annotated[SessionUser, Depends(get_current_session_user)]
 
+MAX_PAGE_SIZE = get_settings().max_page_size
+
 
 @router.get("/history", response_model=AnswerHistory)
 async def answer_history(
     current_user: CurrentUserDependency,
     service: AnswerServiceDependency,
-    page: int = 1,
-    page_size: int = 20,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 20,
 ) -> AnswerHistory:
     """Return a paginated timeline of answers submitted by the current user."""
     return await service.list_history(user_id=current_user.id, page=page, page_size=page_size)
@@ -44,7 +47,12 @@ async def card_stats(
     service: AnswerServiceDependency,
 ) -> AnswerStats:
     """Summarise accuracy metrics for a single study card."""
-    return await service.stats_for_card(study_card_id=study_card_id, user_id=current_user.id)
+    try:
+        return await service.stats_for_card(study_card_id=study_card_id, user_id=current_user.id)
+    except KeyError as exc:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.get("/study-sets/progress", response_model=list[StudySetProgress])
@@ -68,6 +76,8 @@ async def submit_answer(
         return await service.submit_answer(user_id=current_user.id, payload=payload)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.get("/{answer_id}", response_model=AnswerRead)

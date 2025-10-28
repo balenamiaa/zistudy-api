@@ -206,6 +206,30 @@ def test_map_card_to_data_handles_all_types(card_type, payload, expected_type) -
         assert mapped.matches == [EmqMatch(premise_index=0, option_index=1)]
 
 
+def test_map_card_to_data_emq_with_string_option_ids() -> None:
+    service = _service()
+    payload = AiGeneratedPayload(
+        question="Assign therapies to arrhythmias.",
+        options=[
+            AiGeneratedCardOption(id="ChoiceA", text="Lidocaine"),
+            AiGeneratedCardOption(id="ChoiceB", text="Procainamide"),
+        ],
+        correct_answers=["ChoiceB"],
+        rationale=AiGeneratedRationale(primary="Procainamide for WPW", alternatives={}),
+        connections=["Accessory pathway tachycardia"],
+        glossary={},
+        numerical_ranges=[],
+        references=["Match protocols"],
+    )
+    card = AiGeneratedCard(card_type=CardType.EMQ, difficulty=1, payload=payload)
+
+    mapped = service._map_card_to_data(card, GENERATOR_META)
+
+    assert isinstance(mapped, EmqCardData)
+    assert mapped.matches == [EmqMatch(premise_index=0, option_index=1)]
+    assert mapped.options[1] == "Procainamide"
+
+
 def test_map_card_to_data_falls_back_to_generic(monkeypatch) -> None:
     service = _service()
     payload = AiGeneratedPayload(

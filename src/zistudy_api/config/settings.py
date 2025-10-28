@@ -22,7 +22,19 @@ class Settings(BaseSettings):
     api_version: str = "0.2.0"
     log_level: Literal["TRACE", "DEBUG", "INFO", "WARNING", "ERROR", "CRITICAL"] = "INFO"
     log_json: bool = False
-    cors_origins: list[str] = Field(default_factory=lambda: ["*"])
+    cors_origins: list[str] = Field(
+        default_factory=lambda: [
+            "http://localhost",
+            "http://localhost:3000",
+            "http://127.0.0.1",
+            "http://127.0.0.1:3000",
+        ]
+    )
+    ai_pdf_max_bytes: int = Field(
+        default=150 * 1024 * 1024,
+        ge=1,
+        description="Maximum allowed PDF upload size (in bytes) for AI endpoints.",
+    )
     api_host: str = "0.0.0.0"
     api_port: int = 8000
     process_type: Literal["api", "worker", "api-with-worker"] = "api"
@@ -107,7 +119,7 @@ class Settings(BaseSettings):
 def get_settings() -> Settings:
     """Return cached application settings."""
 
-    return Settings()
+    return Settings()  # type: ignore[call-arg]
 
 
 __all__ = ["Settings", "get_settings"]

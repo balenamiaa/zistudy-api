@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import asyncio
+from datetime import datetime, timezone
 from typing import Any, Dict
 
 import pytest
 from httpx import AsyncClient
+
+from zistudy_api.api.dependencies import get_job_service
+from zistudy_api.domain.schemas.jobs import JobStatus, JobSummary
 
 pytestmark = pytest.mark.asyncio
 
@@ -324,6 +328,19 @@ async def test_study_set_add_remove_cards_validation(client: AsyncClient) -> Non
     )
     assert unauthorized_add.status_code == 403
 
+    other_set_resp = await client.post(
+        "/api/v1/study-sets",
+        json={"title": "Other", "description": "Peer", "is_private": True},
+        headers=other_headers,
+    )
+    other_set_id = other_set_resp.json()["study_set"]["id"]
+    cross_add = await client.post(
+        "/api/v1/study-sets/add-cards",
+        json={"study_set_id": other_set_id, "card_ids": [card_id], "card_type": "mcq_single"},
+        headers=other_headers,
+    )
+    assert cross_add.status_code == 403
+
     bad_card_add = await client.post(
         "/api/v1/study-sets/add-cards",
         json={"study_set_id": study_set_id, "card_ids": [999999], "card_type": "mcq_single"},
@@ -359,3 +376,159 @@ async def test_study_set_add_remove_cards_validation(client: AsyncClient) -> Non
     for_card_other = await client.get(f"/api/v1/study-sets/for-card/{card_id}", headers=other_headers)
     assert for_card_other.status_code == 200
     assert for_card_other.json() == []
+
+
+async def test_study_set_bulk_add_endpoint_handles_partial_permissions(
+    client: AsyncClient,
+) -> None:
+    owner_token = await _register_and_login(client, "bulk-owner@example.com")
+    other_token = await _register_and_login(client, "bulk-other@example.com")
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    card_resp = await client.post(
+        "/api/v1/study-cards",
+        json={
+            "card_type": "mcq_single",
+            "data": {
+                "prompt": "Bulk question?",
+                "options": [{"id": "A", "text": "Answer"}],
+                "correct_option_ids": ["A"],
+                "glossary": {},
+                "connections": [],
+                "references": [],
+                "numerical_ranges": [],
+            },
+            "difficulty": 2,
+        },
+        headers=owner_headers,
+    )
+    card_id = card_resp.json()["id"]
+
+    owner_set = await client.post(
+        "/api/v1/study-sets",
+        json={"title": "Owner Set", "description": "Bulk", "is_private": True},
+        headers=owner_headers,
+    )
+    other_set = await client.post(
+        "/api/v1/study-sets",
+        json={"title": "Other Set", "description": "Bulk", "is_private": True},
+        headers=other_headers,
+    )
+
+    payload = {
+        "study_set_ids": [owner_set.json()["study_set"]["id"], other_set.json()["study_set"]["id"]],
+        "card_ids": [card_id],
+        "card_type": "mcq_single",
+    }
+    resp = await client.post("/api/v1/study-sets/bulk-add", json=payload, headers=owner_headers)
+    assert resp.status_code == 200, resp.text
+    data = resp.json()
+    assert data["success_count"] == 1
+    assert data["error_count"] == 1
+    assert any("Forbidden" in message for message in data["errors"])
+
+
+async def test_study_set_bulk_add_requires_editable_sets(client: AsyncClient) -> None:
+    owner_token = await _register_and_login(client, "bulk-owner2@example.com")
+    other_token = await _register_and_login(client, "bulk-other2@example.com")
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    set_resp = await client.post(
+        "/api/v1/study-sets",
+        json={"title": "No Access", "description": "Forbidden", "is_private": True},
+        headers=owner_headers,
+    )
+    set_id = set_resp.json()["study_set"]["id"]
+
+    payload = {"study_set_ids": [set_id], "card_ids": [1], "card_type": "note"}
+    resp = await client.post("/api/v1/study-sets/bulk-add", json=payload, headers=other_headers)
+    assert resp.status_code == 403
+
+
+async def test_clone_and_export_endpoints(client: AsyncClient, app) -> None:
+    owner_token = await _register_and_login(client, "clone-owner@example.com")
+    headers = {"Authorization": f"Bearer {owner_token}"}
+
+    create_resp = await client.post(
+        "/api/v1/study-sets",
+        json={"title": "Clone Source", "description": "Job test", "is_private": True},
+        headers=headers,
+    )
+    study_set_id = create_resp.json()["study_set"]["id"]
+
+    now = datetime.now(tz=timezone.utc)
+    class StubJobService:
+        def __init__(self) -> None:
+            self.captured_payload: dict | None = None
+            self.calls: list[str] = []
+
+        async def enqueue(self, **kwargs):
+            self.captured_payload = kwargs
+            job_type = kwargs["job_type"]
+            self.calls.append(job_type)
+            return JobSummary(
+                id=42,
+                job_type=job_type,
+                status=JobStatus.PENDING,
+                created_at=now,
+                updated_at=now,
+                result=kwargs.get("payload"),
+            )
+
+    stub_service = StubJobService()
+    app.dependency_overrides[get_job_service] = lambda: stub_service
+    try:
+        clone_resp = await client.post(
+            "/api/v1/study-sets/clone",
+            json={"study_set_ids": [study_set_id], "title_prefix": "Copy - "},
+            headers=headers,
+        )
+        assert clone_resp.status_code == 202, clone_resp.text
+        clone_body = clone_resp.json()
+        assert clone_body["id"] == 42
+        assert stub_service.captured_payload is not None
+        assert stub_service.captured_payload["payload"]["study_set_ids"] == [study_set_id]
+
+        export_resp = await client.post(
+            "/api/v1/study-sets/export",
+            json={"study_set_ids": [study_set_id]},
+            headers=headers,
+        )
+        assert export_resp.status_code == 202, export_resp.text
+        assert stub_service.calls.count("study_set_clone") == 1
+        assert stub_service.calls.count("study_set_export") == 1
+    finally:
+        app.dependency_overrides.pop(get_job_service, None)
+
+    other_token = await _register_and_login(client, "clone-intruder@example.com")
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    forbidden_clone = await client.post(
+        "/api/v1/study-sets/clone",
+        json={"study_set_ids": [study_set_id]},
+        headers=other_headers,
+    )
+    assert forbidden_clone.status_code == 403
+
+
+async def test_list_study_sets_page_size_guard(client: AsyncClient) -> None:
+    response = await client.get("/api/v1/study-sets", params={"page_size": 1000})
+    assert response.status_code == 422
+
+
+async def test_list_study_set_cards_page_size_guard(client: AsyncClient) -> None:
+    owner_token = await _register_and_login(client, "cards-page-size@example.com")
+    headers = {"Authorization": f"Bearer {owner_token}"}
+    create_resp = await client.post(
+        "/api/v1/study-sets",
+        json={"title": "Paged", "description": "Limit", "is_private": False},
+        headers=headers,
+    )
+    study_set_id = create_resp.json()["study_set"]["id"]
+    response = await client.get(
+        f"/api/v1/study-sets/{study_set_id}/cards",
+        params={"page_size": 1000},
+        headers=headers,
+    )
+    assert response.status_code == 422

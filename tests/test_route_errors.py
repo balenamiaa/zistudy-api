@@ -39,6 +39,21 @@ async def test_answer_routes_404(client: AsyncClient) -> None:
     assert resp.status_code == 404
 
 
+async def test_answer_stats_returns_404_for_missing_card(client: AsyncClient) -> None:
+    token = await _register_and_login(client, "answer-stats@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+    resp = await client.get("/api/v1/answers/cards/9999/stats", headers=headers)
+    assert resp.status_code == 404
+
+
+async def test_study_card_search_requires_auth(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/v1/study-cards/search",
+        json={"query": "anything", "filters": {}},
+    )
+    assert resp.status_code == 401
+
+
 async def test_study_card_routes_error_paths(client: AsyncClient) -> None:
     token = await _register_and_login(client, "cards-errors@example.com")
     headers = {"Authorization": f"Bearer {token}"}
@@ -82,9 +97,13 @@ async def test_jobs_route_returns_404_for_unknown_job(client: AsyncClient) -> No
 
 
 async def test_tags_routes(client: AsyncClient) -> None:
+    token = await _register_and_login(client, "tags-auth@example.com")
+    headers = {"Authorization": f"Bearer {token}"}
+
     create = await client.post(
         "/api/v1/tags",
         json=[{"name": " physiology "}, {"name": "pharmacology"}],
+        headers=headers,
     )
     assert create.status_code == 201
     created = create.json()
@@ -106,3 +125,11 @@ async def test_tags_routes(client: AsyncClient) -> None:
 
     popular = await client.get("/api/v1/tags/popular", params={"limit": 5})
     assert popular.status_code == 200
+
+
+async def test_tag_creation_requires_authentication(client: AsyncClient) -> None:
+    resp = await client.post(
+        "/api/v1/tags",
+        json=[{"name": "unauth"}],
+    )
+    assert resp.status_code == 401

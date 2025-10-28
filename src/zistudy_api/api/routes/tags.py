@@ -4,7 +4,8 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, Query, status
 
-from zistudy_api.api.dependencies import get_tag_service
+from zistudy_api.api.dependencies import get_current_session_user, get_tag_service
+from zistudy_api.domain.schemas.auth import SessionUser
 from zistudy_api.domain.schemas.tags import TagCreate, TagRead, TagSearchResponse, TagUsage
 from zistudy_api.services.tags import TagService
 
@@ -12,6 +13,7 @@ router = APIRouter(prefix="/tags", tags=["Tags"])
 
 
 TagServiceDependency = Annotated[TagService, Depends(get_tag_service)]
+CurrentUserDependency = Annotated[SessionUser, Depends(get_current_session_user)]
 NamesQuery = Annotated[list[str] | None, Query()]
 SearchQuery = Annotated[str, Query(min_length=1, max_length=64)]
 LimitQuery = Annotated[int, Query(ge=1, le=100)]
@@ -31,6 +33,7 @@ async def list_tags(
 async def create_tags(
     payload: list[TagCreate],
     service: TagServiceDependency,
+    _: CurrentUserDependency,
 ) -> list[TagRead]:
     """Ensure the supplied tag names exist and return their canonical form."""
     tag_names = [tag.name for tag in payload]

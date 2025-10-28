@@ -10,6 +10,7 @@ from zistudy_api.db.repositories.study_cards import StudyCardRepository
 from zistudy_api.db.repositories.study_sets import StudySetRepository
 from zistudy_api.db.repositories.tags import TagRepository
 from zistudy_api.domain.enums import CardCategory, CardType
+from zistudy_api.domain.schemas.auth import SessionUser
 from zistudy_api.domain.schemas.study_cards import StudyCardRead
 from zistudy_api.domain.schemas.study_sets import (
     AddCardsToSet,
@@ -98,7 +99,7 @@ class StudySetService:
         read_model = StudySetRead.model_validate(entity)
         return read_model.can_modify(user_id)
 
-    async def add_cards(self, payload: AddCardsToSet) -> int:
+    async def add_cards(self, payload: AddCardsToSet, *, requester: SessionUser) -> int:
         """Add cards to a study set, ensuring all IDs are valid."""
         entity = await self._require_study_set(payload.study_set_id)
         unique_ids = list(dict.fromkeys(payload.card_ids))
@@ -107,6 +108,13 @@ class StudySetService:
         if len(found_ids) != len(unique_ids):
             missing = set(unique_ids) - found_ids
             raise ValueError(f"Unknown card ids: {sorted(missing)}")
+        inaccessible = [
+            card.id
+            for card in cards
+            if not self._card_accessible(card.owner_id, requester)
+        ]
+        if inaccessible:
+            raise PermissionError(f"Forbidden: cards {sorted(inaccessible)}")
 
         category = payload.card_type.category
         added = await self._study_sets.add_cards(
@@ -159,7 +167,12 @@ class StudySetService:
         ]
         return StudySetCardsPage(items=card_entries, total=total, page=page, page_size=page_size)
 
-    async def bulk_add_cards(self, payload: BulkAddToSets) -> BulkOperationResult:
+    async def bulk_add_cards(
+        self,
+        payload: BulkAddToSets,
+        *,
+        requester: SessionUser,
+    ) -> BulkOperationResult:
         """Add cards to multiple study sets and aggregate success/error counts."""
         errors: list[str] = []
         success = 0
@@ -172,10 +185,13 @@ class StudySetService:
                         study_set_id=study_set_id,
                         card_ids=payload.card_ids,
                         card_type=payload.card_type,
-                    )
+                    ),
+                    requester=requester,
                 )
                 success += 1
             except (KeyError, ValueError) as exc:
+                errors.append(f"Set {study_set_id}: {exc}")
+            except PermissionError as exc:
                 errors.append(f"Set {study_set_id}: {exc}")
 
         return BulkOperationResult(
@@ -264,6 +280,14 @@ class StudySetService:
             question_count=counts["questions"],
             owner_email=owner_email,
         )
+
+    @staticmethod
+    def _card_accessible(owner_id: str | None, requester: SessionUser) -> bool:
+        if owner_id is None:
+            return True
+        if requester.is_superuser:
+            return True
+        return owner_id == requester.id
 
     async def clone_study_sets(
         self,

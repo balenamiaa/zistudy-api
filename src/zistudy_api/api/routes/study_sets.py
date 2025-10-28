@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 
 from zistudy_api.api.dependencies import (
     JobServiceDependency,
@@ -28,6 +28,7 @@ from zistudy_api.domain.schemas.study_sets import (
     StudySetUpdate,
     StudySetWithMeta,
 )
+from zistudy_api.config.settings import get_settings
 from zistudy_api.services.job_processors import process_clone_job, process_export_job
 from zistudy_api.services.study_sets import StudySetService
 
@@ -108,8 +109,8 @@ async def list_study_sets(
     session_user: OptionalUserDependency,
     show_only_owned: bool = False,
     search: str | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 20,
 ) -> PaginatedStudySets:
     """List study sets visible to the caller with optional filters."""
     user_id = session_user.id if session_user else None
@@ -136,11 +137,13 @@ async def add_cards_to_set(
     try:
         if not await service.can_modify(payload.study_set_id, user.id):
             raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Forbidden")
-        await service.add_cards(payload)
+        await service.add_cards(payload, requester=user)
     except KeyError as exc:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=str(exc)) from exc
     except ValueError as exc:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc)) from exc
+    except PermissionError as exc:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=str(exc)) from exc
 
 
 @router.post(
@@ -191,8 +194,8 @@ async def list_cards_in_study_set(
     study_set_id: int,
     service: StudySetServiceDependency,
     card_type: CardType | None = None,
-    page: int = 1,
-    page_size: int = 20,
+    page: Annotated[int, Query(ge=1)] = 1,
+    page_size: Annotated[int, Query(ge=1, le=MAX_PAGE_SIZE)] = 20,
 ) -> StudySetCardsPage:
     """List cards that belong to a study set with optional filtering."""
     try:
@@ -288,10 +291,18 @@ async def bulk_add_cards_to_study_sets(
         card_ids=payload.card_ids,
         card_type=payload.card_type,
     )
-    result = await service.bulk_add_cards(filtered_payload)
+    result = await service.bulk_add_cards(filtered_payload, requester=user)
     if forbidden:
-        result.errors.extend([f"Set {set_id}: Forbidden" for set_id in forbidden])
-        result.error_count += len(forbidden)
+        augmented_errors = [
+            *result.errors,
+            *[f"Set {set_id}: Forbidden" for set_id in forbidden],
+        ]
+        result = result.model_copy(
+            update={
+                "errors": augmented_errors,
+                "error_count": result.error_count + len(forbidden),
+            }
+        )
     return result
 
 
@@ -327,3 +338,4 @@ async def study_sets_for_card(
     user_id = session_user.id if session_user else None
     sets = await service.get_study_sets_for_card(card_id=card_id, user_id=user_id)
     return sets
+MAX_PAGE_SIZE = get_settings().max_page_size
