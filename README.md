@@ -150,12 +150,10 @@ To quickly smoke-test the pipeline end-to-end:
 
 ```bash
 uv run python scripts/ai_manual_check.py \
-  --topics "Sepsis management" \
-  --card-count 2 \
-  --learning-objectives "Stabilise the patient" "Titrate vasopressors"
+  --card-count 2
 ```
 
-> Provide `ZISTUDY_GEMINI_API_KEY` and keep the API running locally. The script consumes tokens and should only be used for manual validation.
+> Provide `ZISTUDY_GEMINI_API_KEY` and keep the API running locally. The script consumes tokens and should only be used for manual validation. By default it asks Gemini for “Clinical reasoning” cards; supply `--topics` or `--learning-objectives` with one or more phrases (e.g., `--topics "Septic shock management" --learning-objectives "Escalate vasopressors"`) when you need a narrower focus.
 
 ---
 
