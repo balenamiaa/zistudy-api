@@ -54,7 +54,7 @@ def run_typecheck() -> int:
 
 
 def run_test() -> int:
-    """Format, lint, type-check, and run the test suite."""
+    """Format, lint, type-check, and run the test suite with coverage."""
 
     return _run_sequence(
         [
@@ -69,7 +69,7 @@ def run_test() -> int:
                 "src",
                 "tests",
             ],
-            [sys.executable, "-m", "pytest"],
+            [sys.executable, "-m", "coverage", "run", "-m", "pytest"],
         ]
     )
 
