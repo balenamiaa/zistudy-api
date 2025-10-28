@@ -1,0 +1,67 @@
+name: Tests
+
+on:
+  push:
+    branches: [master]
+  pull_request:
+    branches: [master]
+
+jobs:
+  unit:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: zistudy
+          POSTGRES_PASSWORD: zistudy
+          POSTGRES_DB: zistudy
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U zistudy"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+      redis:
+        image: redis:7-alpine
+        ports:
+          - 6379:6379
+
+    env:
+      ZISTUDY_DATABASE_URL: postgresql+asyncpg://zistudy:zistudy@localhost:5432/zistudy
+      ZISTUDY_CELERY_BROKER_URL: redis://localhost:6379/0
+      ZISTUDY_CELERY_RESULT_BACKEND: redis://localhost:6379/1
+      ZISTUDY_JWT_SECRET: supersecretjwt123456
+      ZISTUDY_ENVIRONMENT: ci
+      UV_SYSTEM_PYTHON: 0
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up uv
+        uses: astral-sh/setup-uv@v1
+        with:
+          python-version: "3.12"
+
+      - name: Install PostgreSQL client
+        run: sudo apt-get update && sudo apt-get install -y postgresql-client
+
+      - name: Install dependencies
+        run: uv sync --frozen
+
+      - name: Wait for database
+        run: |
+          until pg_isready -h localhost -p 5432 -U zistudy; do sleep 2; done
+
+      - name: Run migrations
+        run: uv run alembic upgrade head
+
+      - name: Run tests (lint, type-check, pytest)
+        run: uv run zistudy-test
+
+      - name: Generate coverage reports
+        run: |
+          uv run coverage xml
+          uv run coverage html
