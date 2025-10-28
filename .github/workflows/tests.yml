@@ -33,7 +33,7 @@ jobs:
       ZISTUDY_CELERY_BROKER_URL: redis://localhost:6379/0
       ZISTUDY_CELERY_RESULT_BACKEND: redis://localhost:6379/1
       ZISTUDY_JWT_SECRET: supersecretjwt123456
-      ZISTUDY_ENVIRONMENT: ci
+      ZISTUDY_ENVIRONMENT: test
       UV_SYSTEM_PYTHON: 0
       UV_DEFAULT_PYTHON: "3.14"
 
