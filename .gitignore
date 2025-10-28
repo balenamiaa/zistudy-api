@@ -1,0 +1,175 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+*.manifest
+*.spec
+
+# Virtual Environments
+.env/
+.venv/
+env/
+venv/
+ENV/
+env.bak/
+venv.bak/
+.python-version
+
+# IDEs and Editors
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+.project
+.pydevproject
+.settings/
+*.sublime-project
+*.sublime-workspace
+.DS_Store
+
+# Environment Variables
+.env
+.env.local
+.env.*.local
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+dev.db
+test.db
+*.db-journal
+
+# Testing
+.coverage
+.coverage.*
+htmlcov/
+.tox/
+.nox/
+.pytest_cache/
+.hypothesis/
+coverage.xml
+*.cover
+.cache
+nosetests.xml
+
+# Logs
+*.log
+logs/
+*.log.*
+
+# Docker
+.dockerignore
+
+# Celery
+celerybeat-schedule
+celerybeat.pid
+
+# Alembic
+# Uncomment if you want to ignore migration files (usually you want to commit these)
+# alembic/versions/*.py
+
+# FastAPI/Uvicorn
+.uvicorn-cache/
+
+# MyPy
+.mypy_cache/
+.dmypy.json
+dmypy.json
+
+# Pyre
+.pyre/
+
+# pytype
+.pytype/
+
+# Ruff
+.ruff_cache/
+
+# Jupyter Notebook
+.ipynb_checkpoints
+*.ipynb
+
+# UV
+.uv_cache/
+
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon
+._*
+.DocumentRevisions-V100
+.fseventsd
+.Spotlight-V100
+.TemporaryItems
+.Trashes
+.VolumeIcon.icns
+.com.apple.timemachine.donotpresent
+.AppleDB
+.AppleDesktop
+Network Trash Folder
+Temporary Items
+.apdisk
+
+# Windows
+Thumbs.db
+Thumbs.db:encryptable
+ehthumbs.db
+ehthumbs_vista.db
+*.stackdump
+[Dd]esktop.ini
+$RECYCLE.BIN/
+*.cab
+*.msi
+*.msix
+*.msm
+*.msp
+*.lnk
+
+# Linux
+*~
+.fuse_hidden*
+.directory
+.Trash-*
+.nfs*
+
+# Backup files
+*.bak
+*.backup
+*.tmp
+*.temp
+
+# AI/ML model files (if you cache models locally)
+*.pt
+*.pth
+*.h5
+*.pkl
+*.pickle
+*.joblib
+
+# Misc
+.sass-cache/
+*.pid
+*.seed
+*.pid.lock

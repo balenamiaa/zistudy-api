@@ -35,6 +35,7 @@ jobs:
       ZISTUDY_JWT_SECRET: supersecretjwt123456
       ZISTUDY_ENVIRONMENT: ci
       UV_SYSTEM_PYTHON: 0
+      UV_DEFAULT_PYTHON: "3.14"
 
     steps:
       - name: Checkout repository
